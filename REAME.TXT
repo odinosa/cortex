@@ -1,0 +1,3 @@
+CORTEX - COntext Repository and Tracking EXtension
+Evoca a ideia de um "cérebro" para o teu ambiente de desenvolvimento
+Captura bem o conceito de armazenamento de contexto e consciência entre sessões
