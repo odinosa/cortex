@@ -1,6 +1,6 @@
 # Arquitetura do CORTEX
 
-*Última atualização:* 09-07-2024
+*Última atualização:* 05-05-2025
 
 Este documento descreve a arquitetura técnica do CORTEX, um sistema MCP (Model Context Protocol) para gestão de contexto e tarefas no ambiente Cursor.
 
@@ -13,6 +13,9 @@ O CORTEX adota uma arquitetura modular e leve, focada em simplicidade e responsi
 3. **SQLite Store** - Armazenamento persistente local
 4. **Markdown Sync** - Sistema de sincronização bidirecional SQLite-Markdown
 5. **CLI** - Interface de linha de comando para administração
+6. **Automation System** - Motor de automação e regras inteligentes
+7. **Analysis Engine** - Sistema de análise de código e sugestões
+8. **LLM Integration** - Assistente proativo e geração de insights
 
 ## Diagrama de Componentes
 
@@ -32,6 +35,19 @@ O CORTEX adota uma arquitetura modular e leve, focada em simplicidade e responsi
                                      ┌─────────────────────────┐     I/O       ┌──────────────┐
                                      │    Markdown Sync        │◄─────────────►│ .md Files    │
                                      └─────────────────────────┘               └──────────────┘
+                                                  │
+                                                  │
+                                                  ▼
+┌─────────────────┐                 ┌─────────────────────────┐                ┌──────────────┐
+│  Analysis       │◄───────────────►│    Automation System    │◄───────────────│  LLM         │
+│  Engine         │                 │                         │                │  Integration  │
+└─────────────────┘                 └─────────────────────────┘                └──────────────┘
+                                                  │
+                                                  │
+                                                  ▼
+                                     ┌─────────────────────────┐
+                                     │    System Monitor       │
+                                     └─────────────────────────┘
 ```
 
 ## Fluxo de Dados
@@ -82,6 +98,7 @@ Responsável pela interface com o Cursor via Model Context Protocol:
   - `context_tools.py` - Gestão de contexto
   - `marker_tools.py` - Processamento de marcadores de continuidade
   - `markdown_tools.py` - Ferramentas para exportação/importação Markdown
+  - `automation_tools.py` - Ferramentas de automação e inteligência
 
 ### Core Engine (`cortex.core`)
 
@@ -95,12 +112,18 @@ Contém a lógica principal do sistema:
 - `context.py` - Gestão de contexto
 - `markers.py` - Processamento de marcadores de continuidade
 - `rules.py` - Aplicação de regras contextuais
+- `automation/` - Sistema de automação inteligente
+  - `trigger.py` - Detecção de eventos e acionadores
+  - `condition.py` - Avaliação de condições 
+  - `action.py` - Execução de ações automatizadas
+  - `event_bus.py` - Sistema de eventos e listeners
 
 ### Persistência (`cortex.storage`)
 
 Gerencia armazenamento de dados:
 
 - `database.py` - Interface com SQLite
+- `cache.py` - Sistema de cache inteligente com política LRU e adaptativa
 - `models/` - Definição dos modelos de dados
   - `session.py`
   - `task.py`
@@ -108,11 +131,13 @@ Gerencia armazenamento de dados:
   - `marker.py`
   - `rule.py`
   - `markdown_sync.py` - Modelo para rastreamento de sincronização Markdown
+  - `automation_rule.py` - Modelo para regras de automação
 - `dao/` - Objetos de acesso a dados
   - `session_dao.py`
   - `task_dao.py`
   - `context_dao.py`
   - `markdown_sync_dao.py` - DAO para operações de sincronização
+  - `automation_dao.py` - DAO para operações de automação
 
 ### Markdown Sync (`cortex.markdown`)
 
@@ -134,6 +159,44 @@ Interface de linha de comando para administração:
 - `task_cmd.py` - Gestão de tarefas
 - `markdown_cmd.py` - Comandos para exportação/importação Markdown
 - `setup_cmd.py` - Configuração inicial
+- `dashboard.py` - Dashboard em terminal para visualização de status
+- `metrics.py` - Visualização de métricas e estatísticas
+
+### Analysis Engine (`cortex.analysis`)
+
+Sistema para análise de código e sugestões inteligentes:
+
+- `analyzer.py` - Interface principal para análise
+- `complexity.py` - Análise de complexidade de código
+- `pattern_detector.py` - Detecção de padrões e anti-padrões
+- `code_metrics.py` - Cálculo de métricas de código
+- `suggestion.py` - Geração de sugestões de melhorias
+
+### LLM Integration (`cortex.llm`)
+
+Integração com modelos de linguagem para assistência proativa:
+
+- `assistant.py` - Assistente inteligente
+- `suggestion.py` - Geração de sugestões para tarefas
+- `summarizer.py` - Geração de resumos automáticos
+- `context_enhancer.py` - Enriquecimento de contexto
+
+### System Monitor (`cortex.system`)
+
+Monitoramento e otimização de recursos do sistema:
+
+- `monitor.py` - Verificação de recursos do sistema
+- `optimizer.py` - Otimização automática de recursos
+- `backup.py` - Sistema de backup incremental
+- `sync.py` - Sincronização com sistemas remotos (SSH)
+
+### Plugins (`cortex.plugins`)
+
+Sistema leve de plugins para extensibilidade:
+
+- `loader.py` - Carregador de plugins
+- `registry.py` - Registro e gerenciamento de plugins
+- `api.py` - API para desenvolvimento de plugins
 
 ## Inicialização do Sistema
 
@@ -152,6 +215,29 @@ Interface de linha de comando para administração:
    - Detecta projeto atual
    - Carrega configurações específicas
    - Prepara contexto e regras
+
+## Modelo de Concorrência
+
+O CORTEX implementa um modelo de concorrência baseado em eventos que equilibra responsividade com simplicidade:
+
+1. **MCP Server**:
+   - Opera em um processo único dedicado
+   - Utiliza um loop de eventos baseado em `asyncio` para I/O não-bloqueante
+   - Comunicação stdio são geridas como streams assíncronos
+
+2. **Operações de Longa Duração**:
+   - Processamento de marcadores e scanning de arquivos grandes são executados em threads separadas
+   - Sistema de filas para operações pesadas, evitando bloqueio da interface principal
+   - Implementação de timeouts para operações potencialmente bloqueantes
+
+3. **Acesso a SQLite**:
+   - Conexões pooling para evitar contenção
+   - Modo WAL (Write-Ahead Logging) habilitado por padrão
+   - Transações explícitas para operações em lote
+
+4. **Operações em Markdown**:
+   - Parsing e escrita de arquivos Markdown em threads dedicadas
+   - Sistema de notificação baseado em eventos para atualizações de UI
 
 ## Abordagem Híbrida SQLite + Markdown
 
@@ -221,15 +307,18 @@ O sistema utiliza uma estratégia de resolução de conflitos em três níveis:
 ### Performance
 
 - SQLite com Write-Ahead Logging (WAL) para otimizar concorrência
-- Cache LRU para contextos frequentemente acessados
+- Cache LRU adaptativo para contextos e dados frequentemente acessados
 - Operações em background para não bloquear interface
 - Parsing incremental para arquivos Markdown grandes
+- Sistema de monitoramento de recursos para otimização automática
+- Modo econômico para execução em bateria
 
 ### Segurança
 
 - Armazenamento local para dados sensíveis
 - Filtragem de credenciais em logs
 - Validação de conteúdo Markdown importado
+- Comunicação segura via SSH para componentes remotos
 
 ### Extensibilidade
 
@@ -237,6 +326,93 @@ O sistema utiliza uma estratégia de resolução de conflitos em três níveis:
 - Hooks para personalização de comportamentos
 - API interna estável para adição de recursos 
 - Formato Markdown extensível para metadados adicionais
+- Sistema de automação baseado em triggers, condições e ações
+
+## Mecanismos de Inteligência Automática
+
+### Sistema de Automação
+
+O CORTEX implementa um sistema de automação inteligente baseado no padrão evento-condição-ação:
+
+1. **Eventos (Triggers)**: 
+   - Criação de tarefas
+   - Detecção de marcadores
+   - Atualização de sessão
+   - Alterações no código-fonte
+   - Tempo programado (cronômetros)
+
+2. **Condições**:
+   - Expressões lógicas avaliando propriedades de objetos
+   - Verificações de contexto (tipo de projeto, linguagem)
+   - Estado atual do sistema
+
+3. **Ações**:
+   - Criação automática de tarefas
+   - Atualização de status
+   - Geração de relatórios
+   - Notificações
+   - Execução de comandos do sistema
+
+O sistema utiliza um barramento de eventos central (`EventBus`) para distribuir eventos para os listeners apropriados, que então avaliam as condições e executam ações conforme necessário.
+
+### Análise de Código
+
+O motor de análise realiza:
+
+1. **Varredura Periódica**:
+   - Executada em segundo plano em intervalos configuráveis
+   - Mais intensiva durante períodos de baixa utilização da CPU
+
+2. **Detecção de Padrões**:
+   - Práticas recomendadas
+   - Anti-padrões comuns
+   - Duplicação de código
+   - Complexidade excessiva
+
+3. **Sugestões Contextuais**:
+   - Refatorações sugeridas baseadas no contexto
+   - Priorização por impacto/esforço
+
+### Integração com LLM
+
+A integração com o LLM permite:
+
+1. **Assistência Proativa**:
+   - Sugestão de próximas tarefas
+   - Geração de resumos de sessão
+   - Melhoria de descrições de tarefas
+
+2. **Análise de Produtividade**:
+   - Identificação de padrões de trabalho eficientes
+   - Sugestões para otimização do fluxo de trabalho
+   - Análise de tendências e métricas
+
+3. **Contexto Inteligente**:
+   - Enriquecimento de contexto para o LLM
+   - Priorização de informações relevantes
+
+## Visualização e Métricas
+
+### Dashboard no Terminal
+
+O CORTEX inclui um dashboard em terminal para visualização rápida:
+
+1. **Status de Projeto**:
+   - Progresso de tarefas por nível
+   - Bloqueiros ativos
+   - Próximas tarefas recomendadas
+
+2. **Métricas de Produtividade**:
+   - Tempo gasto por tarefa
+   - Velocidade de conclusão
+   - Tendências ao longo do tempo
+
+3. **Recursos do Sistema**:
+   - Uso de CPU/memória
+   - Tamanho do banco de dados
+   - Estado de otimização
+
+O dashboard usa caracteres ASCII/Unicode para visualização compatível com qualquer terminal, garantindo leveza e simplicidade.
 
 ## Relação com Comandos do Usuário
 
@@ -249,5 +425,9 @@ Os comandos que o utilizador invoca no Cursor (formato `/cortex:comando`) são m
 | `/cortex:export-tasks` | `export_tasks_markdown` | MCP Server, Markdown Sync (exporter.py) |
 | `/cortex:import-tasks` | `import_tasks_markdown` | MCP Server, Markdown Sync (importer.py) |
 | `/cortex:scan-markers` | `scan_markers`      | MCP Server, Core Engine (markers.py) |
+| `/cortex:analyze`  | `analyze_code`        | MCP Server, Analysis Engine (analyzer.py) |
+| `/cortex:suggest`  | `suggest_next_tasks`  | MCP Server, LLM Integration (assistant.py) |
+| `/cortex:dashboard` | `show_dashboard`     | MCP Server, CLI (dashboard.py) |
+| `/cortex:automate` | `manage_automation`   | MCP Server, Core Engine (automation/) |
 
 Cada comando é processado seguindo o mesmo fluxo básico através da arquitetura, com variações dependendo da operação específica. 

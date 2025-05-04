@@ -59,41 +59,51 @@ Exporte as tarefas para Markdown para obter uma visão geral:
 /cortex:export-tasks "plano-api-rest.md"
 ```
 
-Conteúdo do arquivo gerado (exemplo):
+Alternativamente, use o dashboard para visualização rápida:
 
-```markdown
-# Projeto: API REST FastAPI
-*Atualizado: 09-07-2024*
-
-## Fase: Desenvolvimento da API
-- **Status:** not_started
-- **Progresso:** 0%
-- **Descrição:** Fase principal de desenvolvimento da API REST
-
-### Etapa: Configuração do Projeto
-- **Status:** not_started
-- **Progresso:** 0%
-
-#### Tarefa: Configurar estrutura do projeto FastAPI [ID:task_4]
-- **Status:** not_started
-- **Progresso:** 0%
-
-#### Tarefa: Configurar banco de dados SQLAlchemy [ID:task_5]
-- **Status:** not_started
-- **Progresso:** 0%
-
-#### Tarefa: Configurar sistema de migrations [ID:task_6]
-- **Status:** not_started
-- **Progresso:** 0%
-
-### Etapa: Implementação de Modelos
-- **Status:** not_started
-- **Progresso:** 0%
-
-...
+```
+/cortex:dashboard
 ```
 
-## 4. Iniciar o Desenvolvimento
+Isso mostrará uma visão geral do progresso do projeto diretamente no terminal:
+
+```
+╭───────────────────────────────────────────────────────────╮
+│                 API REST FastAPI Dashboard                 │
+├───────────────────────────────────────────────────────────┤
+│ Progresso Geral: [████████░░░░░░░░░░░░░░░░░░░░] 32%       │
+│                                                           │
+│ Por Nível:                                                │
+│ ├─ Fases:     [██████████░░░░░░░░░░░░░░] 40%              │
+│ ├─ Etapas:    [████████░░░░░░░░░░░░░░░░] 35%              │
+│ ├─ Tarefas:   [██████░░░░░░░░░░░░░░░░░░] 25%              │
+│ └─ Atividades:[████░░░░░░░░░░░░░░░░░░░░] 20%              │
+│                                                           │
+│ TODOs Pendentes: 8  │  Marcadores Não Vinculados: 3       │
+│                                                           │
+│ Próximas Tarefas Sugeridas:                               │
+│ 1. Implementar validação de email                         │
+│ 2. Configurar sistema de migrations                       │
+│ 3. Implementar hash de senha                              │
+╰───────────────────────────────────────────────────────────╯
+```
+
+## 4. Configurar Automações
+
+Configure automações para auxiliar no fluxo de trabalho:
+
+```
+# Criar automação para gerar tarefas a partir de TODOs no código
+/cortex:automate create "todo-tarefas" --event "marker_detected" --condition "marker.type == 'TODO'" --action "create_task" --params "title=Resolver {marker.content},level=activity"
+
+# Configurar notificação para tarefas bloqueadas
+/cortex:automate create "notificacao-bloqueio" --event "task_updated" --condition "task.status == 'blocked'" --action "notify" --params "message=Atenção: Tarefa {task.title} está bloqueada"
+
+# Configurar otimização de banco durante ociosidade
+/cortex:automate create "otimizacao" --event "system_idle" --condition "system.cpu_usage < 15" --action "optimize_database"
+```
+
+## 5. Iniciar o Desenvolvimento
 
 Comece a trabalhar nas tarefas, atualizando seu status conforme progride:
 
@@ -121,7 +131,74 @@ class User(Base):
     # TODO: Implementar relacionamento com perfil
 ```
 
-## 5. Escanear e Vincular Marcadores
+## 6. Analisar o Código
+
+Analise o código para identificar problemas e oportunidades de melhoria:
+
+```
+# Analisar complexidade do código
+/cortex:analyze complexity ./app
+
+# Detectar padrões e anti-padrões
+/cortex:analyze patterns ./app
+
+# Verificar duplicações
+/cortex:analyze duplication ./app
+```
+
+Exemplo de saída da análise de complexidade:
+
+```
+Análise de Complexidade Concluída
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Arquivos Analisados: 12
+Funções/Métodos: 28
+Complexidade Média: 5.7
+
+Componentes de Alta Complexidade:
+- app/auth/jwt.py:verify_token (Complexidade: 14) ⚠️
+- app/routes/users.py:create_user (Complexidade: 11)
+- app/database.py:get_db_session (Complexidade: 8)
+
+Sugestões de Refatoração:
+1. Dividir função verify_token em funções menores
+2. Simplificar validações em create_user
+3. Extrair lógica de tratamento de erros em get_db_session
+```
+
+## 7. Obter Sugestões Inteligentes
+
+Obtenha sugestões baseadas na análise de código e no estado atual do projeto:
+
+```
+# Obter sugestões gerais
+/cortex:suggest
+
+# Obter sugestões específicas para refatoração
+/cortex:suggest refactoring --path ./app/auth/jwt.py
+```
+
+Exemplo de sugestões:
+
+```
+Sugestões para o Projeto
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Refatoração: Dividir função verify_token
+   Impacto: Alto | Esforço: Médio
+   Descrição: Extrair validação de payload para função separada
+
+2. Nova Tarefa: Adicionar testes para modelos
+   Impacto: Alto | Esforço: Baixo
+   Descrição: Os modelos User e Profile não possuem testes
+
+3. Processo: Configurar automação para testes
+   Impacto: Médio | Esforço: Baixo
+   Descrição: Adicionar automação para rodar testes em idle
+```
+
+## 8. Escanear e Vincular Marcadores
 
 Escaneie o código em busca de marcadores:
 
@@ -129,14 +206,48 @@ Escaneie o código em busca de marcadores:
 /cortex:scan-markers
 ```
 
-Vincule os marcadores encontrados às tarefas correspondentes:
+A automação configurada anteriormente criará tarefas automaticamente para os TODOs encontrados, mas você também pode vincular manualmente:
 
 ```
 /cortex:link-marker 1 10  # Vincula o marcador de validação de email à tarefa correspondente
 /cortex:link-marker 2 12  # Vincula o marcador de relacionamento à tarefa correspondente
 ```
 
-## 6. Colaboração via Markdown
+## 9. Monitorar Produtividade
+
+Acompanhe métricas de produtividade para otimizar seu fluxo de trabalho:
+
+```
+# Ver métricas de conclusão de tarefas
+/cortex:metrics completion-rate
+
+# Analisar tempo gasto por tarefa
+/cortex:metrics task-time
+
+# Identificar horários mais produtivos
+/cortex:metrics productive-hours
+```
+
+Exemplo de visualização de períodos produtivos:
+
+```
+Análise de Períodos Produtivos
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Horários mais produtivos (tarefas/hora):
+09:00-11:00: ████████████ (2.4)
+14:00-16:00: █████████ (1.8)
+20:00-22:00: ██████ (1.2)
+
+Dias mais produtivos:
+Terça: ████████████ (12 tarefas)
+Quinta: █████████ (9 tarefas)
+Segunda: ████████ (8 tarefas)
+
+Recomendação: Concentrar tarefas complexas entre 9-11h
+```
+
+## 10. Colaboração via Markdown
 
 Exporte as tarefas atualizadas para compartilhar com a equipe:
 
@@ -168,7 +279,57 @@ Importe as alterações de volta para o CORTEX:
 /cortex:import-tasks "plano-api-rest.md"
 ```
 
-## 7. Guardar e Restaurar Estado
+## 11. Otimizar o Sistema
+
+Monitore e otimize o sistema durante o desenvolvimento:
+
+```
+# Verificar status do sistema
+/cortex:system status
+
+# Ativar modo econômico em bateria
+/cortex:system eco-mode auto
+
+# Otimizar manualmente o banco de dados
+/cortex:system optimize-db
+```
+
+Exemplo de saída de status do sistema:
+
+```
+Status do Sistema CORTEX
+━━━━━━━━━━━━━━━━━━━━━━
+
+CPU: 12% | Memória: 145MB | Disco: 78MB
+Bateria: 65% (modo econômico: ativado)
+Tamanho do Banco: 6.2MB (última otimização: há 3 horas)
+Cache: 24MB (hit ratio: 87%)
+
+Recomendações:
+- Limpar cache antigo (>7 dias): Economizaria 8MB
+- Executar VACUUM no banco: Potencial redução de 15%
+```
+
+## 12. Backup e Sincronização
+
+Configure backup incremental e sincronização:
+
+```bash
+# Configurar backup incremental
+python -m cortex.cli config set backups.type incremental
+python -m cortex.cli config set backups.interval daily
+
+# Configurar sincronização remota
+python -m cortex.cli remote setup --host usuario@servidor --path /backups/api-project
+```
+
+Execute backup manual:
+
+```
+/cortex:backup --incremental
+```
+
+## 13. Guardar e Restaurar Estado
 
 No final do dia, salve o estado atual:
 
@@ -183,7 +344,7 @@ Na próxima sessão, restaure o estado:
 /cortex:load-state "api-dia-1"
 ```
 
-## 8. Analisar Progresso
+## 14. Analisar Progresso
 
 Para obter um resumo do progresso atual:
 
@@ -211,38 +372,40 @@ Próximos passos:
 - Iniciar modelo de perfil
 
 TODOs identificados: 5
+Complexidade média do código: 4.8
+Sugestões pendentes: 3
+
+Insights:
+- Seu ritmo está 15% acima da média
+- Período mais produtivo foi entre 9-11h
+- Concentre-se em refatorações amanhã
 ```
 
-## 9. Automação com Sincronização Contínua
+## 15. Utilizar Insights Automatizados
 
-Para manter a sincronização entre SQLite e Markdown durante todo o projeto:
-
-```bash
-# Configure sincronização automática
-echo '#!/bin/bash
-while true; do
-  python -m cortex.cli sync-tasks "plano-api-rest.md" --auto-resolve=merge
-  sleep 600  # A cada 10 minutos
-done' > sync-api-tasks.sh
-
-chmod +x sync-api-tasks.sh
-./sync-api-tasks.sh &
-```
-
-## 10. Conectar com Sistema de Tickets
-
-Se sua equipe usa Jira, configure a integração:
-
-```bash
-python -m cortex.cli config set jira_url "https://sua-empresa.atlassian.net"
-python -m cortex.cli config set jira_project "API"
-python -m cortex.cli config set jira_token "<seu-token>"
-```
-
-Sincronize tarefas específicas:
+Obtenha insights sobre seu fluxo de trabalho:
 
 ```
-/cortex:sync-jira --task 10
+/cortex:insights workflow-suggestions
+```
+
+Exemplo de saída:
+
+```
+Insights de Fluxo de Trabalho
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Com base em seus padrões de trabalho:
+
+1. Você resolve 30% mais tarefas quando trabalha em blocos de 90 minutos
+2. Tarefas de implementação são mais eficientes quando feitas pela manhã
+3. Documentação e testes são mais eficientes à tarde
+4. Você frequentemente subestima tarefas de autenticação (43% mais longas)
+
+Sugestões:
+- Agende blocos de implementação para 9-11h
+- Reserve períodos de 30min para revisão de código após o almoço
+- Adicione 40% no tempo estimado para tarefas de autenticação
 ```
 
 ## Conclusão
@@ -250,8 +413,12 @@ Sincronize tarefas específicas:
 Este exemplo demonstra como o CORTEX pode ser integrado ao fluxo de trabalho de desenvolvimento de uma API REST, oferecendo:
 
 1. Estruturação hierárquica de tarefas
-2. Rastreamento de TODOs no código
-3. Colaboração com outros membros da equipe via Markdown
-4. Persistência de contexto entre sessões
-5. Análise de progresso
-6. Integração com sistemas externos 
+2. Automação inteligente baseada em eventos
+3. Análise avançada de código
+4. Sugestões contextuais para melhorias
+5. Monitoramento de produtividade com insights
+6. Otimização de sistema e recursos
+7. Rastreamento de TODOs no código
+8. Colaboração com outros membros da equipe via Markdown
+9. Persistência de contexto entre sessões
+10. Backup incremental e sincronização remota 
