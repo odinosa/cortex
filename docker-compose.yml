@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  # Banco de dados PostgreSQL
+  db:
+    image: postgres:14-alpine
+    container_name: cortex-postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: cortex
+      POSTGRES_PASSWORD: cortex
+      POSTGRES_DB: cortex_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cortex -d cortex_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Serviço Redis para cache (opcional)
+  redis:
+    image: redis:7-alpine
+    container_name: cortex-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - full
+
+  # Prometheus para métricas (opcional)
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: cortex-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    profiles:
+      - full
+    depends_on:
+      - cortex
+
+  # Grafana para visualização (opcional)
+  grafana:
+    image: grafana/grafana:10.1.0
+    container_name: cortex-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: cortex
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+      - grafana_data:/var/lib/grafana
+    profiles:
+      - full
+    depends_on:
+      - prometheus
+
+  # Serviço CORTEX MCP (opcional para produção)
+  cortex:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cortex-mcp
+    ports:
+      - "8000:8000"  # FastAPI (REST)
+    environment:
+      - DATABASE_URL=postgresql://cortex:cortex@db:5432/cortex_db
+      - REDIS_URL=redis://redis:6379/0
+      - LOG_LEVEL=INFO
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles:
+      - full
+    volumes:
+      - ./:/app
+    command: python -m cortex.cli serve
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+
+# Para executar apenas o PostgreSQL (default):
+# docker-compose up -d
+
+# Para executar com Redis, Prometheus, Grafana e serviço CORTEX:
+# docker-compose --profile full up -d 

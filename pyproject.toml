@@ -1,0 +1,103 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cortex"
+version = "0.1.0"
+description = "Memória de contexto para o Cursor via Model Context Protocol (MCP)"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Odino", email = "odinoalmeida@example.com"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "fastapi>=0.104.0",
+    "typer>=0.9.0",
+    "pydantic>=2.4.2",
+    "sqlalchemy>=2.0.22",
+    "alembic>=1.12.0",
+    "prometheus-client>=0.17.1",
+    "structlog>=23.1.0",
+    "uvicorn>=0.23.2",
+    "python-json-logger>=2.0.7",
+    "psycopg2-binary>=2.9.9",
+    "rich>=13.5.3",
+    "redis>=5.0.1",
+    "jinja2>=3.1.2",
+    "aiohttp>=3.8.6",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.2",
+    "pytest-cov>=4.1.0",
+    "black>=23.9.1",
+    "isort>=5.12.0",
+    "mypy>=1.5.1",
+    "flake8>=6.1.0",
+    "pre-commit>=3.5.0",
+    "locust>=2.17.0",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/odinosa/cortex"
+"Bug Tracker" = "https://github.com/odinosa/cortex/issues"
+
+[project.scripts]
+cortex = "cortex.cli.main:app"
+
+[tool.setuptools]
+packages = ["cortex"]
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.12"
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+strict_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+warn_unused_configs = true
+implicit_reexport = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_functions = "test_*"
+python_classes = "Test*"
+addopts = "--cov=cortex --cov-report=term --cov-report=xml"
+
+[tool.coverage.run]
+source = ["cortex"]
+omit = ["tests/*", "**/__init__.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "pass",
+    "raise ImportError",
+] 

@@ -1,0 +1,11 @@
+{
+  "tools": [
+    {
+      "id": "cortex",
+      "stdio": {
+        "command": ["/Users/odinoalmeida/Sofftware_OA/CORTEX/.venv/bin/python", "-m", "cortex.mcp.server"]
+      },
+      "tools": ["start_session", "end_session", "record_message", "get_context", "scan_markers", "create_task", "update_task_status", "list_tasks", "detect_context", "save_state", "load_state"]
+    }
+  ]
+} 
