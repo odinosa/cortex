@@ -1,23 +1,86 @@
 # CORTEX
 
-> Memória de contexto para o Cursor via Model Context Protocol (MCP).
+> Assistente de Contexto para Cursor via Model Context Protocol (MCP)
 
-![Status: Early Development](https://img.shields.io/badge/status-early_development-orange)
-![Python: 3.12+](https://img.shields.io/badge/python-3.12+-blue)
-![PostgreSQL: 14+](https://img.shields.io/badge/postgresql-14+-blue)
+![Status: Em Desenvolvimento](https://img.shields.io/badge/status-em_desenvolvimento-orange)
+![Python: 3.10+](https://img.shields.io/badge/python-3.10+-blue)
+![SQLite: 3.x](https://img.shields.io/badge/sqlite-3.x-blue)
+
+## Índice
+
+1. [Visão Geral](#visão-geral)
+2. [Quickstart](#quickstart)
+3. [Arquitetura](#arquitetura)
+   - [Diagrama de Componentes](ARCHITECTURE.md#diagrama-de-componentes)
+   - [Fluxo de Dados](ARCHITECTURE.md#fluxo-de-dados)
+4. [Modelo de Dados](DATA_MODEL.md)
+   - [Esquema SQLite](DATA_MODEL.md#esquema-sqlite)
+   - [Relações](DATA_MODEL.md#relações)
+5. [Plano do Projeto](PROJECT_PLAN.md)
+   - [Fases de Implementação](PROJECT_PLAN.md#fases-de-implementação)
+   - [Priorização](PROJECT_PLAN.md#priorização)
+6. [Integração com Cursor](INTEGRATION.md)
+   - [Setup MCP](INTEGRATION.md#setup-mcp)
+   - [Comandos Disponíveis](INTEGRATION.md#comandos-disponíveis)
+7. [Desenvolvimento Local](#desenvolvimento-local)
+8. [FAQ](#faq)
 
 ## Visão Geral
 
-O CORTEX funciona como o "cérebro" do teu ambiente de desenvolvimento Cursor, permitindo:
+O CORTEX funciona como um assistente de contexto para o ambiente de desenvolvimento Cursor, permitindo:
 
-- Guardar e restaurar sessões de desenvolvimento completas
-- Manter contexto estruturado de conversas com modelos LLM entre sessões
-- Rastrear automaticamente tarefas, TODOs e FIXMEs do código
-- Resumir progressos e fornecer contexto relevante a cada nova interação
-- Gerir hierarquias de tarefas com propagação de estado
-- Detectar automaticamente contextos de trabalho e aplicar regras apropriadas
+- Manter contexto estruturado entre sessões de desenvolvimento
+- Gerir hierarquias de tarefas em 4 níveis
+- Guardar e restaurar sessões de desenvolvimento
+- Aplicar templates e regras conforme contexto do projeto
 
-Tudo através do [Model Context Protocol (MCP)](https://docs.cursor.com/context/model-context-protocol) - implementando ferramentas nativas que qualquer LLM pode utilizar para guardar e recuperar estado.
+O CORTEX implementa o [Model Context Protocol (MCP)](https://modelcontextprotocol.io/introduction) para fornecer ferramentas que qualquer LLM pode utilizar para manter e recuperar estado.
+
+## Quickstart
+
+```bash
+# Clone o repositório
+git clone https://github.com/odinosa/cortex.git
+cd cortex
+
+# Configura o ambiente Python
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .
+
+# Inicializa o banco de dados
+python -m cortex.cli init
+
+# Inicia o servidor MCP (em background)
+python -m cortex.cli serve &
+
+# Configura o Cursor (se ainda não configurado)
+python -m cortex.cli setup-cursor
+```
+
+## Desenvolvimento Local
+
+```bash
+# Modo de desenvolvimento com auto-reload
+python -m cortex.cli serve --dev
+
+# Executar testes
+pytest
+
+# Verificar formatação
+black cortex tests
+```
+
+## FAQ
+
+**P: Como funciona a integração com o Cursor?**
+R: O CORTEX utiliza o Model Context Protocol (MCP) para fornecer ferramentas que o Cursor pode utilizar. Quando configurado, o Cursor chamará estas ferramentas para guardar e restaurar contexto de desenvolvimento.
+
+**P: Como é garantida a segurança dos dados?**
+R: Todos os dados são armazenados localmente em SQLite, e o sistema funciona inteiramente no teu Macbook M3, sem enviar dados para serviços externos (exceto quando explicitamente configurado para integração com Jira).
+
+**P: É possível migrar dados de outro sistema?**
+R: Sim, o CORTEX inclui ferramentas para importar dados de sistemas anteriores como o SUGSE.
 
 ## Principais Benefícios
 
@@ -27,49 +90,6 @@ Tudo através do [Model Context Protocol (MCP)](https://docs.cursor.com/context/
 - **Adaptabilidade:** Sistema contextual ajusta regras automaticamente
 - **Gerenciamento:** Controle hierárquico de tarefas (Fase → Etapa → Tarefa → Actividade)
 - **Simplicidade:** Comandos directamente no chat do Cursor
-
-## Quickstart
-
-```bash
-# 1. Clone o repositório
-git clone https://github.com/odinosa/cortex.git
-cd cortex
-
-# 2. Inicia o PostgreSQL local (requer Docker)
-docker-compose up -d db
-
-# 3. Configura o ambiente Python
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .
-
-# 4. Executa as migrações
-python -m cortex.cli migrate
-
-# 5. Inicia o servidor MCP (modo daemon)
-python -m cortex.cli serve
-```
-
-## Integração com Cursor
-
-1. Cria/edita `~/.cursor/mcp.json` com:
-```json
-{
-  "tools": [
-    {
-      "id": "cortex",
-      "stdio": {
-        "command": ["python", "-m", "cortex.mcp.server"]
-      },
-      "tools": ["start_session", "end_session", "record_message", "get_context", "scan_markers", "create_task", "update_task_status", "list_tasks", "detect_context", "save_state", "load_state"]
-    }
-  ]
-}
-```
-
-2. Reinicia o Cursor
-
-3. Verifica que o CORTEX está ativo abrindo o console do Cursor (`Cmd+Shift+P > Toggle Developer Console`) e procurando por `[MCP] Registered cortex tools`.
 
 ## Comandos Disponíveis no Chat
 
