@@ -1,6 +1,6 @@
 # Modelo de Dados do CORTEX
 
-*Última atualização:* 07-07-2024
+*Última atualização:* 09-07-2024
 
 Este documento descreve o modelo de dados do CORTEX, implementado em SQLite.
 
@@ -23,9 +23,9 @@ O CORTEX utiliza SQLite como solução de armazenamento por sua simplicidade, ro
        |
        |
        v
-+---------------+
-| task_relations|
-+---------------+
++---------------+     +----------------+
+| task_relations|<--->| markdown_sync  |
++---------------+     +----------------+
 ```
 
 ## Definições das Tabelas
@@ -145,6 +145,24 @@ CREATE TABLE markers (
 );
 ```
 
+### `markdown_sync`
+
+Armazena informações de sincronização entre SQLite e arquivos Markdown.
+
+```sql
+CREATE TABLE markdown_sync (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER NOT NULL,
+    file_path TEXT NOT NULL,
+    file_hash TEXT NOT NULL, -- Hash do conteúdo do arquivo para detecção de mudanças
+    last_sync_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    sync_status TEXT NOT NULL, -- 'in_sync', 'sqlite_ahead', 'markdown_ahead', 'conflict'
+    last_error TEXT,
+    FOREIGN KEY (project_id) REFERENCES projects(id),
+    UNIQUE(project_id, file_path)
+);
+```
+
 ### `contexts`
 
 Armazena contextos para diferentes projetos ou tarefas.
@@ -196,6 +214,8 @@ CREATE INDEX idx_markers_project ON markers(project_id);
 CREATE INDEX idx_markers_task ON markers(task_id);
 CREATE INDEX idx_contexts_project ON contexts(project_id);
 CREATE INDEX idx_contexts_task ON contexts(task_id);
+CREATE INDEX idx_markdown_sync_project ON markdown_sync(project_id);
+CREATE INDEX idx_markdown_sync_filepath ON markdown_sync(file_path);
 ```
 
 ## Relações
@@ -228,6 +248,11 @@ CREATE INDEX idx_contexts_task ON contexts(task_id);
    - Uma tarefa pode ter múltiplos marcadores
    - Um marcador pode estar associado a uma tarefa
 
+3. **Projeto <-> Markdown** (via `markdown_sync`):
+   - Um projeto pode estar associado a múltiplos arquivos Markdown
+   - Um arquivo Markdown está associado a um único projeto
+   - Esta relação rastreia o estado de sincronização entre o banco de dados e os arquivos Markdown
+
 ## Convenções de Dados
 
 ### Níveis de Tarefa
@@ -248,7 +273,98 @@ CREATE INDEX idx_contexts_task ON contexts(task_id);
 
 - `TODO`: Item a fazer
 - `FIXME`: Problema que precisa ser corrigido
-- `NOTE`: Informação relevante
+- `NOTE`: Informação importante
+
+### Estados de Sincronização Markdown
+
+- `in_sync`: SQLite e arquivo Markdown estão sincronizados
+- `sqlite_ahead`: Alterações em SQLite ainda não exportadas para Markdown
+- `markdown_ahead`: Alterações no arquivo Markdown ainda não importadas para SQLite
+- `conflict`: Conflito entre alterações no SQLite e no arquivo Markdown
+
+## Abordagem Híbrida SQLite + Markdown
+
+O CORTEX implementa uma abordagem híbrida para gestão de tarefas, combinando o poder do SQLite para armazenamento estruturado com a flexibilidade e legibilidade do Markdown para visualização e edição.
+
+### Modelo de Funcionamento
+
+1. **Armazenamento Primário**: Todas as tarefas e suas relações são armazenadas primariamente no SQLite, garantindo integridade referencial, consultas rápidas e transações seguras.
+
+2. **Persistência do Estado de Sincronização**: A tabela `markdown_sync` rastreia o estado de sincronização entre o banco de dados SQLite e os arquivos Markdown, mantendo o hash do conteúdo do arquivo para detecção eficiente de alterações.
+
+3. **Sincronização Bidirecional**: O CORTEX suporta tanto a exportação de tarefas do SQLite para Markdown quanto a importação de alterações feitas nos arquivos Markdown de volta para o SQLite.
+
+### Algoritmo de Sincronização
+
+O processo de sincronização segue estas etapas:
+
+1. **Exportação (SQLite → Markdown)**:
+   - Consulta as tarefas do projeto no SQLite
+   - Organiza-as de acordo com sua hierarquia
+   - Gera um arquivo Markdown formatado
+   - Atualiza o hash e o estado de sincronização na tabela `markdown_sync`
+
+2. **Importação (Markdown → SQLite)**:
+   - Analisa o arquivo Markdown com um parser específico
+   - Extrai as informações de tarefas e sua hierarquia
+   - Mapeia as tarefas existentes no SQLite por título ou ID (se disponível no Markdown)
+   - Atualiza tarefas existentes e cria novas conforme necessário
+   - Atualiza o hash e o estado de sincronização
+
+3. **Detecção de Conflitos**:
+   - Compara o hash armazenado com o hash atual do arquivo
+   - Se ambos SQLite e Markdown foram alterados desde a última sincronização, marca como conflito
+   - Oferece estratégias de resolução (priorizar SQLite, priorizar Markdown, mesclagem inteligente)
+
+### Formato Markdown
+
+O formato Markdown gerado segue estas convenções:
+
+```markdown
+# Projeto: Nome do Projeto
+*Atualizado: DATA_HORA*
+
+## Fase: Nome da Fase
+- **Status:** Estado
+- **Progresso:** X%
+- **Descrição:** Descrição detalhada da fase
+
+### Etapa: Nome da Etapa
+- **Status:** Estado
+- **Progresso:** X% 
+- **Descrição:** Descrição da etapa
+
+#### Tarefa: Nome da Tarefa [ID:task_123]
+- **Status:** Estado
+- **Progresso:** X%
+- **Estimativa:** Y horas
+- **Descrição:** Descrição da tarefa
+
+##### Atividade: Nome da Atividade [ID:task_456]
+- **Status:** Estado
+- **Progresso:** X%
+- **Descrição:** Descrição da atividade
+```
+
+O ID da tarefa é opcional e é incluído entre colchetes após o título da tarefa quando disponível, facilitando o mapeamento durante a importação.
+
+### Benefícios da Abordagem Híbrida
+
+1. **Melhor dos Dois Mundos**:
+   - SQLite: Desempenho, integridade de dados, consultas complexas
+   - Markdown: Legibilidade, portabilidade, facilidade de edição
+
+2. **Flexibilidade de Workflow**:
+   - Edição por comandos CLI durante o desenvolvimento
+   - Edição manual em Markdown durante planejamento ou revisão
+
+3. **Integração com Ferramentas de Versionamento**:
+   - Arquivos Markdown podem ser versionados facilmente com Git
+   - Possibilidade de revisão de alterações com ferramentas padrão
+
+4. **Colaboração Melhorada**:
+   - Arquivos Markdown podem ser facilmente compartilhados
+   - Não exige acesso direto ao banco de dados para visualização
 
 ## Migrações
 

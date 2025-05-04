@@ -1,211 +1,271 @@
 # Integração com Cursor
 
-*Última atualização:* 07-07-2024
+*Última atualização:* 09-07-2024
 
-Este documento descreve como o CORTEX se integra com o Cursor utilizando o Model Context Protocol (MCP).
+Este documento descreve como o CORTEX se integra ao ambiente de desenvolvimento Cursor através do Model Context Protocol (MCP).
 
-## Model Context Protocol (MCP)
+## Sobre o MCP
 
-O MCP é uma especificação para permitir que modelos LLM acessem e modifiquem um contexto compartilhado. O Cursor implementa o MCP para permitir que ferramentas externas, como o CORTEX, gerenciem contexto para o LLM.
+O [Model Context Protocol (MCP)](https://modelcontextprotocol.io/introduction) é um protocolo que permite que Modelos de Linguagem de Grande Escala (LLMs) no Cursor acessem ferramentas externas através de um formato padronizado. O CORTEX implementa o MCP para:
 
-### Conceitos Chave do MCP
-
-1. **Ferramentas MCP**: Funções que podem ser chamadas pelo LLM
-2. **Protocolo de Comunicação**: Formato de mensagens trocadas via stdio
-3. **Servidor MCP**: Processo que recebe e processa chamadas de ferramentas
+1. Receber e processar comandos do Cursor
+2. Fornecer informações de contexto para o modelo
+3. Manter estado entre sessões
+4. Interagir com o sistema de arquivos local
 
 ## Setup MCP
 
-### Configuração do Arquivo MCP
-
-O CORTEX utiliza a configuração MCP para registrar suas ferramentas no Cursor. A instalação cria/modifica o arquivo `~/.cursor/mcp.json`:
+A integração com o Cursor requer uma configuração no arquivo `~/.cursor/mcp.json`:
 
 ```json
 {
-  "tools": [
-    {
-      "id": "cortex",
-      "stdio": {
-        "command": ["python", "-m", "cortex.mcp.server"]
-      },
-      "tools": [
-        "start_session",
-        "end_session", 
-        "record_message",
-        "get_context",
-        "create_task",
-        "update_task_status",
-        "list_tasks",
-        "scan_markers",
-        "detect_context",
-        "add_context",
-        "apply_rule"
-      ]
+  "tools": {
+    "cortex": {
+      "command": "python -m cortex.mcp",
+      "env": {},
+      "enabled": true
     }
-  ]
+  }
 }
 ```
 
-Esta configuração:
-- Define o CORTEX como uma ferramenta MCP com ID "cortex"
-- Usa o servidor Python como ponto de entrada
-- Registra as ferramentas disponíveis no Cursor
+O comando `cortex.cli setup-cursor` configura automaticamente este arquivo.
 
-### Instalação Automática
+### Permissões
 
-O comando CLI do CORTEX configura automaticamente a integração:
+O CORTEX requer acesso a:
 
-```bash
-python -m cortex.cli setup-cursor
-```
-
-Este comando:
-1. Verifica se o Cursor está instalado
-2. Cria/atualiza o arquivo MCP
-3. Configura a inicialização automática (opcional)
+- Sistema de arquivos (para ler/gravar arquivos de projeto)
+- SQLite (para armazenar dados de sessão e tarefas)
+- Porta stdio (para comunicação com o Cursor)
 
 ## Comandos Disponíveis
 
-O CORTEX disponibiliza dois tipos de interação:
+Os seguintes comandos podem ser usados diretamente no chat do Cursor:
 
-1. **Comandos de Chat**: Digitados diretamente no Cursor
-2. **Ferramentas MCP**: Invocadas pelo LLM via `<function_call>`
+### Gestão de Sessões
 
-### Comandos de Chat
+```
+/cortex:start "Nome da Sessão" "Objetivo principal"
+```
+Inicia uma nova sessão de trabalho. A sessão é vinculada ao projeto atual.
 
-Os comandos de chat são prefixados com `/cortex:` e podem ser usados pelo usuário:
+```
+/cortex:end
+```
+Finaliza a sessão atual e gera um resumo.
 
-| Comando | Descrição | Exemplo |
-|---------|-----------|---------|
-| `/cortex:start` | Inicia uma nova sessão | `/cortex:start "Implementação Auth" "Implementar sistema de login"` |
-| `/cortex:end` | Finaliza a sessão atual | `/cortex:end "Completo até validação de tokens"` |
-| `/cortex:resume` | Retoma uma sessão anterior | `/cortex:resume 42` ou `/cortex:resume last` |
-| `/cortex:task` | Cria uma nova tarefa | `/cortex:task "Implementar validação de email"` |
-| `/cortex:task-status` | Atualiza status da tarefa | `/cortex:task-status 123 completed` |
-| `/cortex:list-tasks` | Lista tarefas do projeto | `/cortex:list-tasks pending` |
-| `/cortex:scan-markers` | Escaneia marcadores | `/cortex:scan-markers` |
-| `/cortex:context` | Mostra contexto atual | `/cortex:context` |
-| `/cortex:help` | Lista comandos disponíveis | `/cortex:help` |
+```
+/cortex:list-sessions [filtro]
+```
+Lista as sessões disponíveis, opcionalmente filtrando por nome.
 
-### Parser de Comandos
+```
+/cortex:resume <session_id>
+```
+Retoma uma sessão anterior, carregando seu contexto.
 
-O CORTEX implementa um parser de comandos que:
-1. Captura mensagens do usuário começando com `/cortex:`
-2. Analisa argumentos e formato
-3. Redireciona para a função apropriada
-4. Retorna resultado para o chat
+### Contexto e Estado
+
+```
+/cortex:context [filtro]
+```
+Obtém o contexto atual da sessão.
+
+```
+/cortex:save-state "nome_do_snapshot"
+```
+Salva um snapshot do estado atual.
+
+```
+/cortex:load-state "nome_do_snapshot"
+```
+Carrega um estado previamente salvo.
+
+### Tarefas e Progresso
+
+```
+/cortex:task "Nova tarefa" --parent <parent_id> --level <level>
+```
+Cria uma nova tarefa na hierarquia.
+
+```
+/cortex:task-status <task_id> <status> [--progress <0-100>]
+```
+Atualiza o status e o progresso de uma tarefa.
+
+```
+/cortex:list-tasks [filtro]
+```
+Lista as tarefas do projeto, opcionalmente com filtro.
+
+### Sistema Híbrido SQLite + Markdown
+
+```
+/cortex:export-tasks "caminho/para/arquivo.md" [filtros]
+```
+Exporta tarefas do SQLite para um arquivo Markdown, aplicando filtros opcionais como nível, status, etc.
+
+```
+/cortex:import-tasks "caminho/para/arquivo.md"
+```
+Importa tarefas de um arquivo Markdown para o SQLite, criando ou atualizando conforme necessário.
+
+```
+/cortex:sync-tasks "caminho/para/arquivo.md"
+```
+Sincroniza automaticamente as tarefas entre SQLite e Markdown, detectando e resolvendo conflitos.
+
+```
+/cortex:diff-tasks "caminho/para/arquivo.md"
+```
+Mostra diferenças entre as tarefas no SQLite e no arquivo Markdown, sem realizar alterações.
+
+### Marcadores
+
+```
+/cortex:scan-markers
+```
+Escaneia o projeto em busca de TODOs, FIXMEs e outros marcadores.
+
+```
+/cortex:link-marker <marker_id> <task_id>
+```
+Associa um marcador a uma tarefa.
+
+```
+/cortex:todo-report
+```
+Gera um relatório dos TODOs e FIXMEs encontrados.
+
+### Resumos
+
+```
+/cortex:summarize
+```
+Gera um resumo da sessão atual.
+
+### Ajuda
+
+```
+/cortex:help [comando]
+```
+Mostra ajuda geral ou sobre um comando específico.
 
 ## Ferramentas MCP
 
-As ferramentas MCP são funções que podem ser chamadas pelo modelo LLM:
+Internamente, o CORTEX implementa as seguintes ferramentas MCP que são expostas ao Cursor:
 
-| Ferramenta | Descrição | Parâmetros |
-|------------|-----------|------------|
-| `start_session` | Inicia sessão | `title`, `objective` |
-| `end_session` | Finaliza sessão | `summary`, `next_session_notes` |
-| `record_message` | Registra mensagem | `role`, `content` |
-| `get_context` | Obtém contexto atual | `max_messages`, `include_system` |
-| `create_task` | Cria tarefa | `title`, `description`, `level`, `parent_id` |
-| `update_task_status` | Atualiza tarefa | `task_id`, `status`, `progress` |
-| `list_tasks` | Lista tarefas | `status`, `level`, `limit` |
-| `scan_markers` | Escaneia marcadores | `directories`, `file_types` |
-| `detect_context` | Detecta contexto atual | - |
-| `add_context` | Adiciona contexto | `name`, `content` |
-| `apply_rule` | Aplica regra | `rule_name` |
+### Ferramentas de Sessão
 
-### Exemplo de Chamada MCP
+- `start_session`: Inicia uma nova sessão com título e objetivo
+- `end_session`: Finaliza uma sessão atual
+- `list_sessions`: Lista sessões existentes
+- `resume_session`: Retoma uma sessão existente
+- `record_message`: Registra uma mensagem na sessão atual
 
-O LLM pode chamar ferramentas MCP usando:
+### Ferramentas de Contexto
 
+- `get_context`: Obtém o contexto da sessão atual
+- `save_state`: Salva um snapshot do estado atual
+- `load_state`: Carrega um snapshot existente
+- `detect_context`: Detecta automaticamente o contexto do projeto
+
+### Ferramentas de Tarefas
+
+- `create_task`: Cria uma nova tarefa
+- `update_task_status`: Atualiza o status de uma tarefa
+- `list_tasks`: Lista tarefas com filtros
+- `task_details`: Obtém detalhes de uma tarefa específica
+- `set_task_relations`: Define relações entre tarefas
+
+### Ferramentas SQLite + Markdown
+
+- `export_tasks_markdown`: Exporta tarefas do SQLite para Markdown
+- `import_tasks_markdown`: Importa tarefas de Markdown para SQLite
+- `sync_tasks`: Sincroniza tarefas entre SQLite e Markdown
+- `diff_tasks`: Compara tarefas entre SQLite e Markdown
+- `resolve_conflicts`: Resolve conflitos de sincronização
+
+### Ferramentas de Marcadores
+
+- `scan_markers`: Escaneia o projeto em busca de marcadores
+- `link_marker_to_task`: Associa um marcador a uma tarefa
+- `generate_todo_report`: Gera um relatório de TODOs e FIXMEs
+
+### Ferramentas de Resumo
+
+- `summarize_conversation`: Gera um resumo da sessão atual
+- `generate_next_steps`: Sugere próximos passos com base no contexto
+
+## Fluxo de Trabalho Típico
+
+1. **Início do Dia**
+   - Abra o Cursor e seu projeto
+   - Use `/cortex:resume` para continuar uma sessão ou `/cortex:start` para iniciar uma nova
+
+2. **Durante o Desenvolvimento**
+   - Trabalhe normalmente com o Cursor AI
+   - Use `/cortex:task` para criar novas tarefas conforme necessário
+   - Atualize o status com `/cortex:task-status`
+   - Use `/cortex:export-tasks` para visualizar suas tarefas em Markdown quando precisar de uma visão geral
+
+3. **Planejamento e Revisão**
+   - Exporte tarefas para Markdown com `/cortex:export-tasks`
+   - Edite manualmente o arquivo Markdown em seu editor preferido
+   - Importe as alterações de volta para o SQLite com `/cortex:import-tasks`
+   - Ou use `/cortex:sync-tasks` para sincronização bidirecional automática
+
+4. **Final do Dia**
+   - Use `/cortex:summarize` para obter um resumo do progresso
+   - Use `/cortex:scan-markers` para identificar TODOs e FIXMEs
+   - Opcionalmente, use `/cortex:save-state` para criar um snapshot importante
+
+## Implementação da Comunicação MCP
+
+A comunicação entre o Cursor e o CORTEX segue o seguinte fluxo:
+
+1. O Cursor envia um objeto JSON através de stdin
+2. O servidor MCP do CORTEX processa o comando
+3. O CORTEX envia uma resposta JSON através de stdout
+4. O Cursor apresenta o resultado ao usuário
+
+Exemplo de solicitação MCP:
+
+```json
+{
+  "name": "cortex.create_task",
+  "arguments": {
+    "title": "Implementar sincronização SQLite-Markdown",
+    "level": "task",
+    "parent_id": 42
+  }
+}
 ```
-<function_call>
-<invoke name="create_task">
-<parameter name="title">Implementar validação de email</parameter>
-<parameter name="level">task</parameter>
-<parameter name="parent_id">42</parameter>
-</invoke>
-</function_call>
+
+Exemplo de resposta MCP:
+
+```json
+{
+  "result": {
+    "task_id": 123,
+    "title": "Implementar sincronização SQLite-Markdown",
+    "level": "task",
+    "status": "not_started"
+  }
+}
 ```
 
-O servidor MCP processará esta chamada e retornará:
+## Depuração
 
-```
-<function_result>
-{"task_id": 123, "status": "created", "message": "Tarefa criada com sucesso"}
-</function_result>
-```
-
-## Fluxo de Integração
-
-### Inicialização
-
-1. O CORTEX inicia automaticamente quando o Cursor é aberto
-2. O servidor MCP registra suas ferramentas
-3. O CORTEX detecta o workspace atual e carrega o projeto correspondente
-
-### Durante Sessão
-
-1. O usuário pode iniciar uma sessão via comando `/cortex:start`
-2. O CORTEX monitora mensagens trocadas e as salva
-3. O modelo LLM pode chamar ferramentas MCP conforme necessário
-4. Tarefas e contextos são gerenciados via comandos ou ferramentas
-
-### Finalização
-
-1. O usuário fecha a sessão via `/cortex:end`
-2. O CORTEX salva o estado final, resumo e tarefas concluídas
-3. O CORTEX prepara contexto para a próxima sessão
-
-## Configuração Avançada
-
-### Inicialização Automática
-
-O CORTEX pode ser configurado para iniciar automaticamente com o Cursor:
+O CORTEX registra logs detalhados em `~/.cortex/logs/mcp.log`. Para habilitar logs de depuração:
 
 ```bash
-# Habilitar inicialização automática
-python -m cortex.cli setup-autostart
-
-# Desabilitar inicialização automática
-python -m cortex.cli disable-autostart
+python -m cortex.cli config set log_level debug
 ```
 
-### Customização de Ferramentas
+## Resolução de Problemas
 
-Você pode personalizar quais ferramentas estão disponíveis no Cursor:
-
-```bash
-# Listar ferramentas disponíveis
-python -m cortex.cli list-tools
-
-# Habilitar/desabilitar ferramenta específica
-python -m cortex.cli toggle-tool scan_markers
-```
-
-## Troubleshooting
-
-### Verificar Integração
-
-Para verificar se a integração está funcionando:
-
-```bash
-# Testar integração MCP
-python -m cortex.cli test-mcp
-
-# Verificar status do servidor
-python -m cortex.cli status
-```
-
-### Problemas Comuns
-
-1. **Servidor não inicia**:
-   - Verificar logs em `~/.cortex/logs/server.log`
-   - Confirmar que Python 3.10+ está instalado
-
-2. **Ferramentas não aparecem no Cursor**:
-   - Reiniciar o Cursor após instalar o CORTEX
-   - Verificar se `~/.cursor/mcp.json` está correto
-
-3. **Erros MCP no Console**:
-   - Abrir console do Cursor (Cmd+Shift+P > Toggle Developer Console)
-   - Procurar erros relacionados ao MCP
+- **O Cursor não reconhece os comandos CORTEX**: Verifique se o servidor MCP está em execução e se `~/.cursor/mcp.json` está configurado corretamente.
+- **O servidor MCP não inicia**: Verifique o log em `~/.cortex/logs/mcp.log` para detalhes do erro.
+- **Problemas de sincronização Markdown**: Verifique se o arquivo Markdown segue o formato esperado. Use `/cortex:diff-tasks` para investigar discrepâncias.

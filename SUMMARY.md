@@ -1,6 +1,89 @@
 # Resumo do Projeto CORTEX
 
-*Última atualização:* 07-07-2024
+*Última atualização:* 09-07-2024
+
+Este documento fornece uma visão resumida do projeto CORTEX, sua arquitetura, funcionalidades e evolução.
+
+## O Que é o CORTEX?
+
+O CORTEX é um assistente de contexto para o ambiente de desenvolvimento Cursor, que implementa o Model Context Protocol (MCP) para fornecer ferramentas de gestão de contexto, sessões e tarefas. O sistema permite manter um histórico estruturado de sessões de desenvolvimento, gerenciar tarefas em níveis hierárquicos e aplicar regras contextuais.
+
+## Principais Funcionalidades
+
+- **Gestão de Sessões**: Capacidade de iniciar, pausar e retomar sessões de desenvolvimento, mantendo contexto completo
+- **Gestão Hierárquica de Tarefas**: Organização em 4 níveis (Fase > Etapa > Tarefa > Atividade) com relações e dependências
+- **Abordagem Híbrida SQLite + Markdown**: Sistema de sincronização bidirecional para edição flexível de tarefas
+- **Detecção de Contexto**: Identificação automática do contexto de trabalho com base no projeto e conteúdo
+- **Marcadores de Continuidade**: Extração e rastreamento de TODOs, FIXMEs e outros marcadores do código
+- **Regras Contextuais**: Aplicação de comportamentos específicos baseados no contexto detectado
+- **Integração com Cursor**: Implementação completa do protocolo MCP para interação fluida
+- **Exportação Flexível**: Capacidade de exportar tarefas e contexto para Markdown e formatos estruturados
+
+## Decisões Arquiteturais
+
+1. **SQLite como Armazenamento Principal**: Escolhido por sua simplicidade, robustez e ausência de requisitos de servidor
+2. **Abordagem Híbrida com Markdown**: Combina o melhor dos dois mundos - armazenamento estruturado em SQLite e edição amigável em Markdown
+3. **Servidor MCP Leve**: Implementação eficiente do protocolo MCP via stdio
+4. **CLI Extensível**: Interface de linha de comando para administração simples
+5. **Design Modular**: Componentes isolados para facilitar manutenção e extensão
+
+## Abordagem Híbrida SQLite + Markdown
+
+Uma das principais inovações do CORTEX é sua abordagem híbrida para gestão de tarefas, combinando:
+
+- **SQLite para Armazenamento Estruturado**:
+  - Consultas rápidas e eficientes
+  - Integridade referencial e relacional
+  - Suporte a transações ACID
+
+- **Markdown para Interação Humana**:
+  - Visualização e edição amigável
+  - Facilidade de compartilhamento
+  - Integração com ferramentas de versionamento (Git)
+
+- **Sincronização Bidirecional**:
+  - Exportação de tarefas para arquivos Markdown
+  - Importação de alterações feitas manualmente
+  - Detecção e resolução de conflitos
+
+Esta abordagem facilita tanto o gerenciamento programático (via APIs e comandos) quanto a interação humana direta através de edição de arquivos Markdown, proporcionando a flexibilidade ideal para diferentes necessidades.
+
+## Evolução Planejada
+
+O desenvolvimento do CORTEX segue um modelo iterativo, com as seguintes fases:
+
+1. **MVP (1.0)**: Gestão básica de sessões e contexto
+2. **Gestão de Tarefas (2.0)**: Sistema hierárquico de tarefas
+3. **Abordagem Híbrida SQLite + Markdown (2.5)**: Sincronização bidirecional para edição flexível
+4. **Análise de Código (3.0)**: Extração e gestão de marcadores
+5. **Motor Contextual (4.0)**: Detecção de contexto e aplicação de regras
+6. **Integração Externa (5.0)**: Conectores para sistemas externos (Jira)
+7. **Extensões Avançadas (6.0)**: Ferramentas adicionais para análise e visualização
+
+## Comparação com Alternativas
+
+| Característica | CORTEX | SUGSE | Cursor Nativo | Jira |
+|----------------|--------|-------|---------------|------|
+| Integração com Cursor | ✅ | ⚠️ Parcial | ✅ | ❌ |
+| Persistência de Sessões | ✅ | ✅ | ❌ | ❌ |
+| Hierarquia de Tarefas | ✅ | ✅ | ❌ | ✅ |
+| Sincronização SQLite ↔ Markdown | ✅ | ❌ | ❌ | ❌ |
+| Marcadores de Código | ✅ | ✅ | ❌ | ❌ |
+| Gestão de Contexto | ✅ | ⚠️ Básica | ❌ | ❌ |
+| Uso Exclusivamente Local | ✅ | ✅ | ✅ | ❌ |
+| Integração Jira | ⚠️ Planejada | ❌ | ❌ | ✅ |
+
+## Conclusão
+
+O CORTEX representa um avanço significativo na gestão de contexto para desenvolvimento em Cursor, com foco em:
+
+- **Continuidade**: Manutenção do contexto entre sessões de desenvolvimento
+- **Flexibilidade**: Abordagem híbrida SQLite + Markdown para gerenciamento de tarefas
+- **Estrutura**: Organização hierárquica de tarefas e contextos
+- **Automação**: Detecção e aplicação de regras contextuais
+- **Simplicidade**: Interface direta via chat do Cursor e comandos MCP
+
+A abordagem híbrida para gestão de tarefas é especialmente valiosa, pois permite aproveitar o melhor de dois mundos: a estrutura e integridade do SQLite com a flexibilidade e legibilidade do Markdown, proporcionando uma experiência de desenvolvimento mais fluida e produtiva.
 
 ## Visão Geral
 

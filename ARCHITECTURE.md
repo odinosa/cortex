@@ -1,6 +1,6 @@
 # Arquitetura do CORTEX
 
-*Última atualização:* 07-07-2024
+*Última atualização:* 09-07-2024
 
 Este documento descreve a arquitetura técnica do CORTEX, um sistema MCP (Model Context Protocol) para gestão de contexto e tarefas no ambiente Cursor.
 
@@ -11,7 +11,8 @@ O CORTEX adota uma arquitetura modular e leve, focada em simplicidade e responsi
 1. **MCP Server** - Interface com o Cursor via stdio
 2. **Core Engine** - Lógica de negócio e gestão de estado
 3. **SQLite Store** - Armazenamento persistente local
-4. **CLI** - Interface de linha de comando para administração
+4. **Markdown Sync** - Sistema de sincronização bidirecional SQLite-Markdown
+5. **CLI** - Interface de linha de comando para administração
 
 ## Diagrama de Componentes
 
@@ -26,10 +27,10 @@ O CORTEX adota uma arquitetura modular e leve, focada em simplicidade e responsi
 │  Administração  │◄────────────────►│    CORTEX Core Engine   │◄─────────────►│  Database    │
 └─────────────────┘                  └────────────┬────────────┘               └──────────────┘
                                                   │
-                                                  │ [Opcional]
+                                                  │
                                                   ▼
-                                     ┌─────────────────────────┐     HTTPS     ┌──────────────┐
-                                     │    Jira Connector       │◄─────────────►│  Jira API    │
+                                     ┌─────────────────────────┐     I/O       ┌──────────────┐
+                                     │    Markdown Sync        │◄─────────────►│ .md Files    │
                                      └─────────────────────────┘               └──────────────┘
 ```
 
@@ -57,6 +58,14 @@ O CORTEX adota uma arquitetura modular e leve, focada em simplicidade e responsi
 3. Sessão registra interações e alterações
 4. Ao finalizar, sistema atualiza estado das tarefas e cria contexto para próxima sessão
 
+### 4. Fluxo Híbrido SQLite + Markdown
+
+1. Utilizador executa comando de exportação (`/cortex:export-tasks`)
+2. Sistema converte tarefas do SQLite para formato Markdown
+3. Utilizador edita arquivo Markdown manualmente
+4. Sistema importa alterações de volta para SQLite (`/cortex:import-tasks`) ou sincroniza automaticamente (`/cortex:sync-tasks`)
+5. Sistema detecta conflitos e oferece estratégias de resolução quando necessário
+
 ## Detalhamento dos Componentes
 
 ### MCP Server (`cortex.mcp`)
@@ -70,6 +79,7 @@ Responsável pela interface com o Cursor via Model Context Protocol:
   - `task_tools.py` - Gestão de tarefas
   - `context_tools.py` - Gestão de contexto
   - `marker_tools.py` - Processamento de marcadores de continuidade
+  - `markdown_tools.py` - Ferramentas para exportação/importação Markdown
 
 ### Core Engine (`cortex.core`)
 
@@ -95,10 +105,22 @@ Gerencia armazenamento de dados:
   - `context.py`
   - `marker.py`
   - `rule.py`
+  - `markdown_sync.py` - Modelo para rastreamento de sincronização Markdown
 - `dao/` - Objetos de acesso a dados
   - `session_dao.py`
   - `task_dao.py`
   - `context_dao.py`
+  - `markdown_sync_dao.py` - DAO para operações de sincronização
+
+### Markdown Sync (`cortex.markdown`)
+
+Gerencia a sincronização bidirecional entre SQLite e arquivos Markdown:
+
+- `exporter.py` - Exportação de tarefas para Markdown
+- `importer.py` - Importação e parsing de Markdown para tarefas
+- `diff.py` - Detecção de diferenças entre SQLite e Markdown
+- `conflict.py` - Resolução de conflitos de sincronização
+- `formatter.py` - Formatação da saída Markdown
 
 ### CLI (`cortex.cli`)
 
@@ -108,14 +130,8 @@ Interface de linha de comando para administração:
 - `server_cmd.py` - Comandos relacionados ao servidor
 - `project_cmd.py` - Gestão de projetos
 - `task_cmd.py` - Gestão de tarefas
+- `markdown_cmd.py` - Comandos para exportação/importação Markdown
 - `setup_cmd.py` - Configuração inicial
-
-### Integração Jira (Opcional)
-
-Componente para sincronização bidirecional com Jira:
-
-- `jira_connector.py` - Sincronização de tarefas
-- `jira_mapper.py` - Mapeamento entre modelos CORTEX e Jira
 
 ## Inicialização do Sistema
 
@@ -135,6 +151,49 @@ Componente para sincronização bidirecional com Jira:
    - Carrega configurações específicas
    - Prepara contexto e regras
 
+## Abordagem Híbrida SQLite + Markdown
+
+### Fundamentos da Arquitetura
+
+A abordagem híbrida SQLite + Markdown é implementada como um subsistema que oferece:
+
+1. **Persistência Dual**:
+   - SQLite como armazenamento primário e confiável
+   - Markdown como interface amigável para visualização e edição humana
+
+2. **Sincronização Bidirecional**:
+   - Rastreamento de mudanças através de hashes de conteúdo
+   - Detecção e resolução de conflitos
+
+3. **Modelo de Dados Específico**:
+   - Tabela `markdown_sync` para rastrear estado de sincronização
+   - Mapeamento entre estrutura hierárquica em SQLite e níveis de cabeçalho em Markdown
+
+### Fluxo de Operações
+
+1. **Exportação (SQLite → Markdown)**:
+   ```
+   SQLite DB → TaskExporter → MarkdownFormatter → Arquivo .md
+   ```
+
+2. **Importação (Markdown → SQLite)**:
+   ```
+   Arquivo .md → MarkdownParser → TaskImporter → SQLite DB
+   ```
+
+3. **Sincronização**:
+   ```
+   DiffGenerator → ConflictDetector → ConflictResolver → Sincronização
+   ```
+
+### Mecanismo de Resolução de Conflitos
+
+O sistema utiliza uma estratégia de resolução de conflitos em três níveis:
+
+1. **Automática**: Quando as mudanças não se sobrepõem
+2. **Baseada em Regras**: Aplicação de heurísticas para resolver conflitos simples
+3. **Manual**: Solicitação de intervenção do usuário para casos complexos
+
 ## Considerações Técnicas
 
 ### Performance
@@ -142,15 +201,17 @@ Componente para sincronização bidirecional com Jira:
 - SQLite com Write-Ahead Logging (WAL) para otimizar concorrência
 - Cache LRU para contextos frequentemente acessados
 - Operações em background para não bloquear interface
+- Parsing incremental para arquivos Markdown grandes
 
 ### Segurança
 
 - Armazenamento local para dados sensíveis
 - Filtragem de credenciais em logs
-- Integração segura com APIs externas
+- Validação de conteúdo Markdown importado
 
 ### Extensibilidade
 
 - Arquitetura de plugins para componentes opcionais
 - Hooks para personalização de comportamentos
 - API interna estável para adição de recursos 
+- Formato Markdown extensível para metadados adicionais 

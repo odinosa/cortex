@@ -1,202 +1,289 @@
 # Guia de Início Rápido do CORTEX
 
-*Última atualização:* 07-07-2024
+*Última atualização:* 09-07-2024
 
-Este guia mostra como instalar, configurar e começar a usar o CORTEX com o Cursor.
+Este guia fornece instruções para instalar, configurar e começar a usar o CORTEX.
 
 ## Instalação
 
-### Requisitos
+### Pré-requisitos
+
+- macOS (Apple Silicon ou Intel)
 - Python 3.10 ou superior
-- Cursor instalado
-- MacOS (testado em Apple Silicon M3)
+- Cursor IDE instalado
+- Acesso a Terminal
 
-### Passos
+### Passos de Instalação
 
-1. **Clonar o repositório**
+1. **Clone o repositório**:
    ```bash
    git clone https://github.com/odinosa/cortex.git
    cd cortex
    ```
 
-2. **Criar ambiente virtual e instalar**
+2. **Configure o ambiente Python**:
    ```bash
    python -m venv .venv
-   source .venv/bin/activate
+   source .venv/bin/activate  # No Windows: .venv\Scripts\activate
    pip install -e .
    ```
 
-3. **Inicializar banco de dados**
+3. **Inicialize o banco de dados**:
    ```bash
    python -m cortex.cli init
    ```
 
-4. **Configurar integração com o Cursor**
+4. **Inicie o servidor MCP**:
+   ```bash
+   # Em um terminal dedicado ou como daemon
+   python -m cortex.cli serve
+   
+   # Ou em background
+   python -m cortex.cli serve &
+   ```
+
+5. **Configure o Cursor**:
    ```bash
    python -m cortex.cli setup-cursor
    ```
-   
-5. **Reiniciar o Cursor**
-   Feche e abra novamente o Cursor para carregar a configuração MCP.
 
-## Uso Básico
+6. **Verifique a instalação**:
+   ```bash
+   python -m cortex.cli status
+   ```
 
-### Iniciar o Servidor MCP
+## Comandos Básicos
 
-Para usar o CORTEX, o servidor MCP precisa estar em execução:
+### Gestão de Sessões
 
-```bash
-# Iniciar em primeiro plano
-python -m cortex.cli serve
-
-# Iniciar em background
-python -m cortex.cli serve &
+Para iniciar uma nova sessão:
+```
+/cortex:start "Título da Sessão" "Objetivo principal"
 ```
 
-### Criar um Projeto
-
-Antes de usar as funcionalidades principais, crie um projeto:
-
-```bash
-python -m cortex.cli create-project "Meu Projeto" --desc "Descrição do projeto"
+Para listar sessões existentes:
+```
+/cortex:list-sessions
 ```
 
-### Verificar Status
+Para retomar uma sessão:
+```
+/cortex:resume <session_id>
+```
 
-Para verificar o status atual do sistema:
+### Gestão de Tarefas
 
+Para criar uma nova tarefa:
+```
+/cortex:task "Implementar feature X" --level task --parent 3
+```
+
+Para listar tarefas:
+```
+/cortex:list-tasks [--status in_progress] [--level task]
+```
+
+Para atualizar status:
+```
+/cortex:task-status 5 in_progress --progress 75
+```
+
+## Gestão Híbrida SQLite + Markdown
+
+O CORTEX oferece uma abordagem híbrida para gerenciar tarefas, permitindo que você alterne facilmente entre o banco de dados SQLite e arquivos Markdown.
+
+### Exportação para Markdown
+
+Para exportar suas tarefas para um arquivo Markdown:
+
+```
+/cortex:export-tasks "caminho/para/tarefas.md" 
+```
+
+Você pode filtrar as tarefas a serem exportadas:
+
+```
+/cortex:export-tasks "caminho/para/tarefas.md" --status in_progress,not_started --level phase,stage
+```
+
+### Edição Manual em Markdown
+
+Após exportar, você pode editar o arquivo Markdown manualmente em qualquer editor:
+
+1. Altere títulos, descrições, status ou progresso
+2. Adicione novas tarefas (seguindo o formato existente)
+3. Reorganize a hierarquia (mudando os níveis de cabeçalho)
+4. Salve o arquivo
+
+### Importação de Markdown para SQLite
+
+Para importar as alterações feitas no arquivo Markdown:
+
+```
+/cortex:import-tasks "caminho/para/tarefas.md"
+```
+
+### Sincronização Bidirecional
+
+Para sincronizar automaticamente (comparando SQLite e Markdown):
+
+```
+/cortex:sync-tasks "caminho/para/tarefas.md"
+```
+
+Se houver conflitos, o CORTEX fornecerá opções para resolvê-los.
+
+### Visualização de Diferenças
+
+Para ver as diferenças entre as tarefas no SQLite e no arquivo Markdown:
+
+```
+/cortex:diff-tasks "caminho/para/tarefas.md"
+```
+
+### Fluxo de Trabalho Recomendado
+
+1. **Desenvolvimento Diário**:
+   - Use comandos `/cortex:task` e `/cortex:task-status` para atualizações rápidas
+   - Exporte para Markdown no final do dia: `/cortex:export-tasks "tarefas.md"`
+
+2. **Planejamento e Revisão**:
+   - Edite o arquivo Markdown para reorganizar e planejar
+   - Importe de volta para SQLite: `/cortex:import-tasks "tarefas.md"`
+
+3. **Colaboração**:
+   - Compartilhe arquivo Markdown com colegas
+   - Versione com Git para rastreamento de alterações
+   - Sincronize atualizações: `/cortex:sync-tasks "tarefas.md"`
+
+## Análise de Código
+
+Para escanear marcadores no código:
+```
+/cortex:scan-markers
+```
+
+Para gerar relatório de TODOs:
+```
+/cortex:todo-report
+```
+
+## Contexto e Estado
+
+Para obter o contexto atual:
+```
+/cortex:context
+```
+
+Para salvar um snapshot do estado:
+```
+/cortex:save-state "nome-do-snapshot"
+```
+
+Para carregar um snapshot:
+```
+/cortex:load-state "nome-do-snapshot"
+```
+
+## Configuração Personalizada
+
+Para listar configurações:
+```bash
+python -m cortex.cli config list
+```
+
+Para atualizar uma configuração:
+```bash
+python -m cortex.cli config set marcador_path /caminho/personalizado
+```
+
+## Solução de Problemas
+
+### Servidor MCP não responde
+
+Verifique o status do servidor:
 ```bash
 python -m cortex.cli status
 ```
 
-## Comandos no Cursor
+Reinicie o servidor:
+```bash
+python -m cortex.cli restart
+```
 
-Depois de configurado, você pode usar os seguintes comandos diretamente no chat do Cursor:
+### Cursor não reconhece comandos
 
-### Sessões
+Verifique a configuração do MCP:
+```bash
+cat ~/.cursor/mcp.json
+```
 
-- **Iniciar sessão**
-  ```
-  /cortex:start "Título da Sessão" "Objetivo principal"
-  ```
+Reconfigure se necessário:
+```bash
+python -m cortex.cli setup-cursor
+```
 
-- **Finalizar sessão**
-  ```
-  /cortex:end "Resumo do que foi feito"
-  ```
+### Erro de Importação de Markdown
 
-- **Retomar sessão anterior**
-  ```
-  /cortex:resume last
-  ```
+Se a importação de Markdown falhar:
 
-### Tarefas
-
-- **Criar tarefa**
-  ```
-  /cortex:task "Implementar funcionalidade X"
-  ```
-
-- **Atualizar status de tarefa**
-  ```
-  /cortex:task-status 3 completed
-  ```
-
-- **Listar tarefas**
-  ```
-  /cortex:list-tasks
-  ```
-
-### Marcadores
-
-- **Escanear marcadores**
-  ```
-  /cortex:scan-markers
-  ```
-
-### Contexto
-
-- **Ver contexto atual**
-  ```
-  /cortex:context
-  ```
-
-## Exemplo de Fluxo de Trabalho
-
-Um fluxo de trabalho típico usando o CORTEX:
-
-1. **Iniciar o dia:**
+1. Verifique o formato do arquivo (deve seguir a estrutura de níveis e atributos)
+2. Verifique se há conflitos: `/cortex:diff-tasks "tarefas.md"`
+3. Tente resolver manualmente ou use a opção de força:
    ```
-   /cortex:start "Implementação de API" "Criar endpoints CRUD"
+   /cortex:import-tasks "tarefas.md" --force=sqlite
    ```
+   (ou `--force=markdown` para priorizar o conteúdo do arquivo)
 
-2. **Criar tarefas para a sessão:**
-   ```
-   /cortex:task "Definir modelos de dados"
-   /cortex:task "Implementar endpoint GET"
-   /cortex:task "Implementar endpoint POST"
-   ```
+## Exemplos de Uso
 
-3. **Durante o desenvolvimento:**
-   - Trabalhe normalmente com o Cursor AI
-   - Use `// TODO: ` nos comentários para marcar pontos de continuidade
+### Exemplo 1: Iniciar um Novo Projeto
 
-4. **Verificar progresso:**
-   ```
-   /cortex:scan-markers
-   /cortex:list-tasks
-   ```
+```
+/cortex:start "Projeto XYZ" "Implementar sistema de autenticação"
+/cortex:task "Implementação de Autenticação" --level phase
+/cortex:task "Configurar Backend" --level stage --parent 1
+/cortex:task "Implementar rotas de API" --level task --parent 2
+/cortex:export-tasks "projeto-xyz.md"
+```
 
-5. **Finalizar tarefas concluídas:**
-   ```
-   /cortex:task-status 1 completed
-   ```
+### Exemplo 2: Fluxo Híbrido SQLite + Markdown
 
-6. **Finalizar a sessão:**
-   ```
-   /cortex:end "Implementei endpoints GET e POST. Pendente: PUT e DELETE"
-   ```
+```
+# 1. Exporte tarefas atuais
+/cortex:export-tasks "tarefas-atual.md"
 
-## Dicas e Truques
+# 2. Edite o arquivo em seu editor preferido
+# ... edição manual ...
 
-- **Usar com o Cursor LLM**: O CORTEX funciona melhor com modelos como o Claude 3 Opus ou GPT-4o, que têm melhor compreensão de contexto.
+# 3. Importe as alterações
+/cortex:import-tasks "tarefas-atual.md"
 
-- **Marcadores de Continuidade**: Use comentários formatados como `// TODO: fazer algo` ou `// FIXME: corrigir isso` para que o CORTEX possa escaneá-los automaticamente.
+# 4. Verifique as atualizações
+/cortex:list-tasks
+```
 
-- **Tarefas Hierárquicas**: Ao criar tarefas complexas, use a hierarquia de 4 níveis:
-  ```
-  /cortex:task "Implementar API" --level phase
-  /cortex:task "Modelagem de Dados" --level stage --parent 1
-  /cortex:task "Criar modelo de usuário" --level task --parent 2
-  /cortex:task "Adicionar validação de senha" --level activity --parent 3
-  ```
+### Exemplo 3: Manter Sincronização Contínua
 
-## Troubleshooting
+Para projetos com edição frequente do arquivo Markdown:
 
-### Problemas Comuns
+```bash
+# Crie um script de sincronização automática
+echo '#!/bin/bash
+while true; do
+  python -m cortex.cli sync-tasks "tarefas.md" --auto-resolve=merge
+  sleep 300  # Sincronizar a cada 5 minutos
+done' > sync-tasks.sh
 
-- **Ferramentas não aparecem no Cursor**
-  
-  Verifique se o servidor está rodando:
-  ```bash
-  python -m cortex.cli status
-  ```
-
-  Se necessário, reinicie o Cursor ou force reconfiguração:
-  ```bash
-  python -m cortex.cli setup-cursor --force
-  ```
-
-- **Erro ao iniciar sessão**
-  
-  Verifique se você criou um projeto:
-  ```bash
-  python -m cortex.cli list-projects
-  ```
+chmod +x sync-tasks.sh
+./sync-tasks.sh &
+```
 
 ## Próximos Passos
 
-- Explore mais comandos com `python -m cortex.cli --help`
-- Consulte a documentação completa em `README.md`
-- Leia sobre o modelo de dados em `DATA_MODEL.md` 
-- Configure regras contextuais avançadas 
+1. Explore a documentação completa para recursos avançados
+2. Configure regras contextuais para seu fluxo de trabalho
+3. Explore a integração de marcadores com tarefas
+4. Considere contribuir com o desenvolvimento
+
+Para mais informações, consulte a [documentação completa](README.md). 

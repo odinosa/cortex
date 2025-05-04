@@ -1,6 +1,6 @@
 # Plano de Implementação do CORTEX
 
-*Última atualização:* 07-07-2024
+*Última atualização:* 09-07-2024
 
 Este documento descreve o plano de implementação iterativo do CORTEX, com foco em entregar valor o mais rápido possível.
 
@@ -14,7 +14,7 @@ O CORTEX seguirá um modelo de desenvolvimento iterativo com fases bem definidas
 
 ## Fases de Implementação
 
-O projeto será desenvolvido em 5 fases principais, com entregas incrementais em cada uma:
+O projeto será desenvolvido em 6 fases principais, com entregas incrementais em cada uma:
 
 ### Fase 1: Fundação (Sprint 1-2) - 2 Semanas
 
@@ -55,14 +55,34 @@ O projeto será desenvolvido em 5 fases principais, com entregas incrementais em
 #### Sprint 4: Utilidades de Tarefas
 - [ ] Propagação de estado entre níveis hierárquicos
 - [ ] Listagem e filtragem de tarefas
-- [ ] Exportação para formato Markdown
+- [ ] Exportação básica para formato Markdown
 - [ ] Comandos:
   - [ ] `/cortex:list-tasks` para listar tarefas
   - [ ] `/cortex:project` para criar/editar projeto
+  - [ ] `/cortex:export-tasks` para exportar tarefas em Markdown
 
 #### Entregável Fase 2:
 - Modelo completo de gestão hierárquica de tarefas
 - Capacidade de criar e manter projetos com suas tarefas
+- Exportação simples para Markdown
+
+### Fase 2.5: Abordagem Híbrida SQLite + Markdown (Sprint 4.5) - 1 Semana
+
+**Objetivo:** Implementação da sincronização bidirecional entre SQLite e Markdown para gestão de tarefas.
+
+#### Sprint 4.5: Sincronização SQLite-Markdown
+- [ ] Esquema SQLite para rastreamento de sincronização (markdown_sync)
+- [ ] Parser avançado de Markdown para extrair dados de tarefas
+- [ ] Algoritmo de detecção e resolução de conflitos
+- [ ] Comandos:
+  - [ ] `/cortex:import-tasks` para importar tarefas de arquivo Markdown
+  - [ ] `/cortex:sync-tasks` para sincronização bidirecional
+  - [ ] `/cortex:diff-tasks` para ver diferenças entre SQLite e Markdown
+
+#### Entregável Fase 2.5:
+- Sistema completo de sincronização bidirecional SQLite-Markdown
+- Capacidade de editar tarefas tanto via comandos quanto via arquivos Markdown
+- Detecção e resolução de conflitos de sincronização
 
 ### Fase 3: Análise de Código (Sprint 5-6) - 2 Semanas
 
@@ -122,11 +142,29 @@ O projeto será desenvolvido em 5 fases principais, com entregas incrementais em
 - [ ] Melhorias de UI/UX nos comandos
 - [ ] Documentação completa
 - [ ] Otimizações de performance
-- [ ] Exportação/importação de dados
+- [ ] Exportação/importação de dados avançada
 
 #### Entregável Fase 5:
 - Sistema completo com integrações e documentação
 - Produto finalizando para uso pessoal contínuo
+
+### Fase 6: Extensões Avançadas da Abordagem Híbrida (Sprint 11) - 1 Semana
+
+**Objetivo:** Melhorias avançadas na integração SQLite + Markdown e ferramentas adicionais.
+
+#### Sprint 11: Ferramentas Avançadas para Gestão Híbrida
+- [ ] Visualização de histórico de alterações de tarefas
+- [ ] Integração com editores Markdown (VS Code, Obsidian)
+- [ ] Análise de métricas de produtividade baseada em histórico de tarefas
+- [ ] Comandos:
+  - [ ] `/cortex:task-history` para ver histórico de alterações
+  - [ ] `/cortex:task-stats` para estatísticas de produtividade
+  - [ ] `/cortex:open-in-editor` para abrir tarefas no editor preferido
+
+#### Entregável Fase 6:
+- Conjunto completo de ferramentas avançadas para gestão híbrida de tarefas
+- Integração com fluxos de trabalho externos
+- Análise e visualização avançada de dados de tarefas
 
 ## Priorização
 
@@ -138,10 +176,12 @@ A priorização do desenvolvimento segue os seguintes princípios:
 
 ### Prioridades por Sessão
 
-O sistema de Tarefas é prioritário porque:
+O sistema de Tarefas com abordagem híbrida SQLite + Markdown é prioritário porque:
 - Fornece estrutura para organizar o trabalho
 - Permite rastreamento de progresso
 - Facilita a continuidade entre sessões
+- Oferece flexibilidade de edição em diferentes formatos
+- Suporta tanto operações programáticas quanto edição manual
 
 O sistema de Marcadores é o segundo porque:
 - Complementa a gestão de tarefas
@@ -170,6 +210,8 @@ dependencies = [
     "watchdog>=3.0.0",  # Monitorar alterações
     "rich>=13.0.0",  # UI para terminal
     "jira>=3.5.0",  # Integração Jira (opcional)
+    "mistletoe>=1.0.0",  # Parser Markdown
+    "markdown>=3.4.0",  # Geração Markdown
 ]
 
 [project.optional-dependencies]
@@ -196,6 +238,7 @@ Para avaliar o sucesso do CORTEX, serão rastreadas as seguintes métricas:
 2. **Continuidade**: Taxa de conclusão de tarefas
 3. **Produtividade**: Tempo médio para completar tarefas
 4. **Consistência**: Regularidade de sessões de trabalho
+5. **Sincronização**: Frequência de sincronização SQLite-Markdown e taxa de resolução de conflitos
 
 ## Riscos e Mitigações
 
@@ -206,6 +249,8 @@ Para avaliar o sucesso do CORTEX, serão rastreadas as seguintes métricas:
 | Conflitos com Cursor | Média | Alto | Teste extensivo, versão-pin do Cursor |
 | Erro na detecção de projetos | Média | Médio | UI para forçar seleção de projeto |
 | Falta de usabilidade | Alta | Médio | Dogfooding intensivo, simplificar UX |
+| Conflitos de sincronização SQLite-Markdown | Média | Alto | Algoritmo robusto de detecção e resolução, log detalhado de alterações |
+| Performance com arquivos Markdown grandes | Baixa | Médio | Implementar paginação e carregamento parcial |
 
 ## Próximos Passos Imediatos
 
@@ -215,4 +260,9 @@ Para avaliar o sucesso do CORTEX, serão rastreadas as seguintes métricas:
 
 2. **MCP Minimal**:
    - Implementar servidor MCP com uma única ferramenta
-   - Testar integração com Cursor 
+   - Testar integração com Cursor
+
+3. **Modelo de Tarefas SQLite + Markdown**:
+   - Implementar esquema de banco de dados (incluindo tabela markdown_sync)
+   - Desenvolver parser/gerador Markdown
+   - Criar sistema de sincronização bidirecional 
