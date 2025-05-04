@@ -36,32 +36,34 @@ O CORTEX adota uma arquitetura modular e leve, focada em simplicidade e responsi
 
 ## Fluxo de Dados
 
-### 1. Fluxo Básico MCP
+### 1. Fluxo de Comunicação MCP
 
-1. Cursor invoca ferramentas MCP do CORTEX via stdio
-2. MCP Server recebe e processa comandos
-3. Core Engine aplica lógica de negócio
-4. SQLite Store persiste dados
-5. Resultado retorna para o Cursor
+1. O Cursor envia uma solicitação MCP via stdin com nome da ferramenta e argumentos
+2. O MCP Server do CORTEX recebe e processa a solicitação
+3. O Core Engine aplica a lógica de negócio necessária
+4. As alterações são persistidas no SQLite Store quando aplicável
+5. O resultado é enviado de volta para o Cursor via stdout
+6. O Cursor apresenta a resposta ao utilizador
 
 ### 2. Detecção de Workspace
 
-1. CORTEX inicia quando o Cursor abre
-2. Detecta arquivo de workspace aberto
-3. Carrega contexto específico do projeto
-4. Determina tarefas pendentes para o projeto
+1. O CORTEX inicia quando o Cursor abre
+2. O sistema detecta o arquivo de workspace aberto
+3. Identifica e carrega o projeto associado ao workspace
+4. Carrega contexto específico do projeto
+5. Determina tarefas pendentes para o projeto atual
 
 ### 3. Gestão de Sessão
 
 1. Utilizador inicia sessão via comando `/cortex:start`
 2. Sistema carrega contexto e tarefas pendentes
-3. Sessão registra interações e alterações
+3. Sessão registra interações e alterações durante o desenvolvimento
 4. Ao finalizar, sistema atualiza estado das tarefas e cria contexto para próxima sessão
 
 ### 4. Fluxo Híbrido SQLite + Markdown
 
 1. Utilizador executa comando de exportação (`/cortex:export-tasks`)
-2. Sistema converte tarefas do SQLite para formato Markdown
+2. Sistema converte tarefas do SQLite para formato Markdown estruturado
 3. Utilizador edita arquivo Markdown manualmente
 4. Sistema importa alterações de volta para SQLite (`/cortex:import-tasks`) ou sincroniza automaticamente (`/cortex:sync-tasks`)
 5. Sistema detecta conflitos e oferece estratégias de resolução quando necessário
@@ -169,6 +171,26 @@ A abordagem híbrida SQLite + Markdown é implementada como um subsistema que of
    - Tabela `markdown_sync` para rastrear estado de sincronização
    - Mapeamento entre estrutura hierárquica em SQLite e níveis de cabeçalho em Markdown
 
+### Diagrama de Fluxo de Sincronização
+
+```
+┌────────────┐         ┌────────────┐        ┌────────────┐
+│  SQLite DB │◄────────┤ Diff Engine├───────►│ Markdown   │
+└─────┬──────┘         └────────────┘        └──────┬─────┘
+      │                       ▲                     │
+      │                       │                     │
+      ▼                       │                     ▼
+┌─────────────┐        ┌──────────────┐     ┌──────────────┐
+│ DAO/Queries │        │Conflict Solver│     │ Parser/Writer│
+└─────┬───────┘        └──────────────┘     └──────┬───────┘
+      │                       ▲                    │
+      │                       │                    │
+      ▼                       │                    ▼
+┌─────────────┐               │              ┌────────────┐
+│ Task Models │───────────────┴──────────────│   MD View  │
+└─────────────┘                              └────────────┘
+```
+
 ### Fluxo de Operações
 
 1. **Exportação (SQLite → Markdown)**:
@@ -192,7 +214,7 @@ O sistema utiliza uma estratégia de resolução de conflitos em três níveis:
 
 1. **Automática**: Quando as mudanças não se sobrepõem
 2. **Baseada em Regras**: Aplicação de heurísticas para resolver conflitos simples
-3. **Manual**: Solicitação de intervenção do usuário para casos complexos
+3. **Manual**: Solicitação de intervenção do utilizador para casos complexos
 
 ## Considerações Técnicas
 
@@ -214,4 +236,18 @@ O sistema utiliza uma estratégia de resolução de conflitos em três níveis:
 - Arquitetura de plugins para componentes opcionais
 - Hooks para personalização de comportamentos
 - API interna estável para adição de recursos 
-- Formato Markdown extensível para metadados adicionais 
+- Formato Markdown extensível para metadados adicionais
+
+## Relação com Comandos do Usuário
+
+Os comandos que o utilizador invoca no Cursor (formato `/cortex:comando`) são mapeados para chamadas de ferramentas MCP internas:
+
+| Comando do Usuário | Ferramenta MCP Interna | Componentes Envolvidos |
+|--------------------|------------------------|------------------------|
+| `/cortex:start`    | `start_session`        | MCP Server, Core Engine (session.py), SQLite Store |
+| `/cortex:task`     | `create_task`          | MCP Server, Core Engine (task.py), SQLite Store |
+| `/cortex:export-tasks` | `export_tasks_markdown` | MCP Server, Markdown Sync (exporter.py) |
+| `/cortex:import-tasks` | `import_tasks_markdown` | MCP Server, Markdown Sync (importer.py) |
+| `/cortex:scan-markers` | `scan_markers`      | MCP Server, Core Engine (markers.py) |
+
+Cada comando é processado seguindo o mesmo fluxo básico através da arquitetura, com variações dependendo da operação específica. 

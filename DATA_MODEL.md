@@ -284,7 +284,7 @@ CREATE INDEX idx_markdown_sync_filepath ON markdown_sync(file_path);
 
 ## Abordagem Híbrida SQLite + Markdown
 
-O CORTEX implementa uma abordagem híbrida para gestão de tarefas, combinando o poder do SQLite para armazenamento estruturado com a flexibilidade e legibilidade do Markdown para visualização e edição.
+O CORTEX implementa uma abordagem híbrida inovadora para gestão de tarefas, combinando o poder do SQLite para armazenamento estruturado com a flexibilidade e legibilidade do Markdown para visualização e edição.
 
 ### Modelo de Funcionamento
 
@@ -311,14 +311,18 @@ O processo de sincronização segue estas etapas:
    - Atualiza tarefas existentes e cria novas conforme necessário
    - Atualiza o hash e o estado de sincronização
 
-3. **Detecção de Conflitos**:
+3. **Detecção e Resolução de Conflitos**:
    - Compara o hash armazenado com o hash atual do arquivo
    - Se ambos SQLite e Markdown foram alterados desde a última sincronização, marca como conflito
-   - Oferece estratégias de resolução (priorizar SQLite, priorizar Markdown, mesclagem inteligente)
+   - Oferece estratégias de resolução:
+     - Priorizar SQLite (sobrescrever alterações no Markdown)
+     - Priorizar Markdown (sobrescrever alterações no SQLite)
+     - Mesclagem inteligente (combinar alterações não conflitantes)
+     - Resolução manual (para conflitos complexos)
 
 ### Formato Markdown
 
-O formato Markdown gerado segue estas convenções:
+O formato Markdown gerado segue estas convenções, facilitando tanto a visualização humana quanto o parsing pelo sistema:
 
 ```markdown
 # Projeto: Nome do Projeto
@@ -346,16 +350,16 @@ O formato Markdown gerado segue estas convenções:
 - **Descrição:** Descrição da atividade
 ```
 
-O ID da tarefa é opcional e é incluído entre colchetes após o título da tarefa quando disponível, facilitando o mapeamento durante a importação.
+O ID da tarefa é incluído entre colchetes após o título da tarefa quando disponível, facilitando o mapeamento durante a importação.
 
 ### Benefícios da Abordagem Híbrida
 
 1. **Melhor dos Dois Mundos**:
-   - SQLite: Desempenho, integridade de dados, consultas complexas
-   - Markdown: Legibilidade, portabilidade, facilidade de edição
+   - **SQLite**: Desempenho, integridade de dados, consultas complexas
+   - **Markdown**: Legibilidade, portabilidade, facilidade de edição
 
 2. **Flexibilidade de Workflow**:
-   - Edição por comandos CLI durante o desenvolvimento
+   - Edição por comandos durante o desenvolvimento ativo
    - Edição manual em Markdown durante planejamento ou revisão
 
 3. **Integração com Ferramentas de Versionamento**:
@@ -364,37 +368,54 @@ O ID da tarefa é opcional e é incluído entre colchetes após o título da tar
 
 4. **Colaboração Melhorada**:
    - Arquivos Markdown podem ser facilmente compartilhados
-   - Não exige acesso direto ao banco de dados para visualização
+   - Não exige acesso direto ao banco de dados para visualização ou edição
 
-## Migrações
+## Exemplos de Consultas SQLite Comuns
 
-O CORTEX utiliza um sistema simples de migrações para criar e atualizar o banco de dados:
+### Listar Tarefas de um Projeto
 
-```python
-def init_db():
-    """Inicializa o banco de dados com o esquema inicial."""
-    conn = sqlite3.connect(get_db_path())
-    cursor = conn.cursor()
-    
-    # Criar tabelas
-    cursor.executescript("""
-        -- Tabela projects
-        CREATE TABLE IF NOT EXISTS projects (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            -- campos...
-        );
-        
-        -- Outras tabelas...
-    """)
-    
-    conn.commit()
-    conn.close()
+```sql
+SELECT id, title, level, status, progress 
+FROM tasks 
+WHERE project_id = ? 
+ORDER BY level, order_index;
+```
+
+### Encontrar Marcadores Não Resolvidos
+
+```sql
+SELECT m.id, m.content, m.file_path, m.line_number, t.title as task_title
+FROM markers m
+LEFT JOIN tasks t ON m.task_id = t.id
+WHERE m.project_id = ? AND m.resolved_at IS NULL;
+```
+
+### Obter Estado de Sincronização Markdown
+
+```sql
+SELECT file_path, sync_status, last_sync_time 
+FROM markdown_sync 
+WHERE project_id = ?;
+```
+
+### Rastrear Progresso de Tarefas
+
+```sql
+SELECT 
+  level,
+  COUNT(*) as total_tasks,
+  SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
+  AVG(progress) as avg_progress
+FROM tasks
+WHERE project_id = ?
+GROUP BY level;
 ```
 
 ## Evolução do Modelo
 
-Este modelo é projetado para ser evolutivo:
+Este modelo é projetado para ser evolutivo, com um plano claro de expansão:
 
 1. **Fase 1**: Tabelas essenciais (projects, sessions, messages, tasks)
 2. **Fase 2**: Relações de tarefas e marcadores
-3. **Fase 3**: Contextos e regras avançadas 
+3. **Fase 3**: Modelo completo incluindo contextos, regras e sincronização Markdown
+4. **Fase 4 (planejada)**: Extensões para integração com sistemas externos (como Jira) e análise avançada de produtividade 
