@@ -1,6 +1,6 @@
 # CORTEX – Roadmap & Gestão de Tarefas
 
-*Última actualização:* 04-06-2024 17:50
+*Última actualização:* 06-06-2024 14:15
 
 > Usa este ficheiro para marcar progresso. Assinala com `[x]` quando concluíres.
 
@@ -18,32 +18,32 @@
 ---
 
 ## Sprint 0 – Bootstrapping (04/06 - 10/06)
-- [ ] Configurar estrutura de directórios
-- [ ] `pyproject.toml` com dependências principais
-  - [ ] FastAPI, Typer, Pydantic, SQLAlchemy, Alembic
-  - [ ] Pytest, Black, isort, mypy
-  - [ ] Prometheus client, structlog
-- [ ] `README.md` com visão geral + quickstart
-- [ ] Script `scripts/bootstrap.sh` (venv + pip install + migrate)
+- [x] Configurar estrutura de directórios
+- [x] `pyproject.toml` com dependências principais
+  - [x] FastAPI, Typer, Pydantic, SQLAlchemy, Alembic
+  - [x] Pytest, Black, isort, mypy
+  - [x] Prometheus client, structlog
+- [x] `README.md` com visão geral + quickstart
+- [x] Script `scripts/bootstrap.sh` (venv + pip install + migrate)
 - [ ] Pre-commit (black + isort + flake8)
-- [ ] Git inicial + 1º commit
-- [ ] Esqueleto básico de módulos
-  - [ ] `cortex/mcp/`
-  - [ ] `cortex/core/`
-  - [ ] `cortex/cli/`
-  - [ ] `tests/`
+- [x] Git inicial + 1º commit
+- [x] Esqueleto básico de módulos
+  - [x] `cortex/mcp/`
+  - [x] `cortex/core/`
+  - [x] `cortex/cli/`
+  - [x] `tests/`
 
 ## Sprint 1 – Data Layer MVP (11/06 - 17/06)
-- [ ] Modelagem completa do banco de dados
-  - [ ] `core/db.py` com engine + Session
-  - [ ] `core/models/session.py` (Session, SessionMetadata)
-  - [ ] `core/models/message.py` (Message, MessageRole)
-  - [ ] `core/models/task.py` (Task, TaskStatus, TaskLevel)
-  - [ ] `core/models/state.py` (State, StateSnapshot)
-  - [ ] `core/models/marker.py` (Marker, MarkerType)
-- [ ] Alembic config + migração inicial
-  - [ ] `alembic/env.py`
-  - [ ] Migração base com todas as tabelas
+- [x] Modelagem completa do banco de dados
+  - [x] `core/db.py` com engine + Session
+  - [x] `core/models/session.py` (Session, SessionMetadata)
+  - [x] `core/models/message.py` (Message, MessageRole)
+  - [x] `core/models/task.py` (Task, TaskStatus, TaskLevel)
+  - [x] `core/models/state.py` (State, StateSnapshot)
+  - [x] `core/models/marker.py` (Marker, MarkerType)
+- [x] Alembic config + migração inicial
+  - [x] `alembic/env.py`
+  - [x] Migração base com todas as tabelas
 - [ ] DAO (Data Access Objects)
   - [ ] `core/dao/session_dao.py`
   - [ ] `core/dao/message_dao.py`
@@ -54,15 +54,15 @@
   - [ ] Testes de integração com BD
 
 ## Sprint 2 – MCP Core & scan_markers (18/06 - 24/06)
-- [ ] Implementação base do servidor MCP
-  - [ ] `mcp/server.py` com loop de leitura stdio
+- [x] Implementação base do servidor MCP
+  - [x] `mcp/server.py` com loop de leitura stdio
   - [ ] `mcp/protocol.py` com classes para request/response MCP
   - [ ] `mcp/registry.py` para registro de ferramentas
   - [ ] `mcp/logging.py` configuração de logs estruturados
-- [ ] Ferramentas de sessão
-  - [ ] `mcp/tools/session.py` (start/end/list)
-  - [ ] `mcp/tools/conversation.py` (record_message, get_context)
-  - [ ] `mcp/tools/markers.py` (scan_markers)
+- [x] Ferramentas de sessão
+  - [x] `mcp/tools/session.py` (start/end/list)
+  - [x] `mcp/tools/conversation.py` (record_message, get_context)
+  - [x] `mcp/tools/markers.py` (scan_markers)
 - [ ] Implementação básica da API principal
   - [ ] `core/session_manager.py`
   - [ ] `core/message_manager.py`
@@ -73,7 +73,7 @@
   - [ ] Teste end-to-end de sessão completa
 
 ## Sprint 3 – Integração Cursor & Context Engine MVP (25/06 - 01/07)
-- [ ] Template `~/.cursor/mcp.json` para documentação
+- [x] Template `~/.cursor/mcp.json` para documentação
 - [ ] Detecção e gestão de contexto
   - [ ] `core/context/detector.py` para identificar contextos
   - [ ] `core/context/rules.py` para aplicar regras
@@ -102,8 +102,8 @@
   - [ ] API para busca de mensagens
 
 ## Sprint 5 – CLI & Export/Import (09/07 - 15/07)
-- [ ] CLI com Typer
-  - [ ] `cli/main.py` com comandos principais
+- [x] CLI com Typer
+  - [x] `cli/main.py` com comandos principais
   - [ ] `cli/session.py` para gestão de sessões
   - [ ] `cli/task.py` para gestão de tarefas
   - [ ] `cli/export.py` para exportação/importação
@@ -160,9 +160,9 @@
   - [ ] Recuperação automática
 
 ## Sprint 9 – Deployment & Docs (06/08 - 12/08)
-- [ ] `docker-compose.yml` completo
-  - [ ] Serviço PostgreSQL
-  - [ ] Serviço CORTEX
+- [x] `docker-compose.yml` completo
+  - [x] Serviço PostgreSQL
+  - [x] Serviço CORTEX
   - [ ] Grafana + Prometheus (opcional)
 - [ ] README completo + documentação
   - [ ] Guia de instalação detalhado
